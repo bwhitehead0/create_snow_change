@@ -125,6 +125,7 @@ create_json_payload() {
       *) err "Invalid option: -$OPTARG"; exit 1 ;;
     esac
   done
+
   # create JSON payload
   # this needs to be way more dynamic - chg_model, x_kpmg3_pit_change_testing_signoff shouldn't be hardcoded, and x_kpmg3_pit_change_testing_signoff looks like a custom field anyway.
   # this likely limits the use of this script to our internal environment, and even then, the differences between prod and nonprod servicenow makes that even more difficult.
@@ -137,14 +138,61 @@ create_json_payload() {
   else
     echo "${json_payload}"
   fi
-
 }
 
 # create change request
 create_chg() {
-  local json_payload="${1}"
-  # replace with actual command to create change request
-  echo "Change request created with payload: ${json_payload}"
+  # needs: json_payload, sn_url, (username & password or token)
+  local json_payload=""
+  local sn_url=""
+  local username=""
+  local password=""
+  local token=""
+
+while getopts "j:l:u:p:t:" opt; do
+    case "$opt" in
+      j) json_payload="$OPTARG" ;;
+      l) sn_url="$OPTARG" ;;
+      u) username="$OPTARG" ;;
+      p) password="$OPTARG" ;;
+      t) token="$OPTARG" ;;
+      *) err "Invalid option: -$OPTARG"; exit 1 ;;
+    esac
+  done
+
+  # build URL
+  # break up here so we can add logic around pieces of the API call as needed in the future
+  local API_ENDPOINT="/api/sn_chg_rest/v1/change"
+  local URL="${sn_url}${API_ENDPOINT}"
+
+  # if token is set use that, otherwise use username and password
+  # if both are set, use token
+  # save HTTP response code to variable, API response to file (new_chg_response.json)
+  if [[ -n "$token" ]]; then
+    response=$(curl --request POST \
+      --url "${URL}" \
+      --header "Authorization: Bearer ${token}" \
+      --header "Accept: application/json" \
+      --data "${json_payload}" \
+      --silent -w "%{http_code}" -o new_chg_response.json)
+  else
+    response=$(curl --request POST \
+      --url "${URL}" \
+      --user "${username}:${password}" \
+      --header "Accept: application/json" \
+      --data "${json_payload}" \
+      --silent -w "%{http_code}" -o new_chg_response.json)
+  fi
+
+  # check if response is 2xx
+  if [[ "$response" =~ ^2 ]]; then
+    # successful API call. return CHG detail payload and clean up
+    cat new_chg_response.json
+    rm new_chg_response.json
+  else
+    err "Failed to create CHG. HTTP response code: $response"
+    exit 1
+  fi
 }
 
 # primary function to grab all passed parameters and call other functions
@@ -190,7 +238,6 @@ main() {
     exit 1
   fi
 
-
   # check for required parameters
   # double check this logic around user/pass/token
   if [[ -z "$ci_name" || -z "$sn_url" || -z "$short_description" || ( -z "$username" && -z "$token" ) ]]; then
@@ -206,21 +253,16 @@ main() {
   fi
 
   # test if url is valid and reachable
+  # do we need to add normalization here? ie, ensure https:// or http:// is present?
   if ! curl -s --head "$sn_url" | grep "HTTP/[1-9]* [2][0-9][0-9]" > /dev/null; then
     err "Invalid or unreachable URL: $sn_url"
     exit 1
   fi
 
-
-  # encoded_ci_name=$(url_encode_string "$ci_name") # we just call this in get_ci_sys_id
   ci_sys_id=$(get_ci_sys_id "$ci_name") # done
-  json_payload=$(create_json_payload -c "$ci_sys_id" "$encoded_description") # TODO
-  create_chg "$json_payload"
-
+  json_payload=$(create_json_payload -c "$ci_sys_id") # done
+  create_chg -j "$json_payload" -l "$sn_url" -u "${username}" -p "${password}" -t "${token}" # done
 
 }
 
 main "$@"
-
-
-
