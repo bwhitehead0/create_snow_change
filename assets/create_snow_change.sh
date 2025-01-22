@@ -8,10 +8,8 @@ err() {
 # check if required apps are installed
 check_application_installed() {
     if [ -x "$(command -v "${1}")" ]; then
-      echo "${1} is found"
       true
     else
-      echo "${1} is not found"
       false
     fi
 }
@@ -87,12 +85,14 @@ get_ci_sys_id() {
   # save HTTP response code to variable, API response to file (sys_id.json)
   if [[ -n "$token" ]]; then
     response=$(curl --request GET \
+      --location \
       --url "${URL}" \
       --header "Authorization: Bearer ${token}" \
       --header "Accept: application/json" \
       --silent -w "%{http_code}" -o sys_id.json)
   else
     response=$(curl --request GET \
+      --location \
       --url "${URL}" \
       --user "${username}:${password}" \
       --header "Accept: application/json" \
@@ -151,7 +151,7 @@ create_chg() {
   local password=""
   local token=""
 
-while getopts "j:l:u:p:t:" opt; do
+  while getopts "j:l:u:p:t:" opt; do
     case "$opt" in
       j) json_payload="$OPTARG" ;;
       l) sn_url="$OPTARG" ;;
@@ -172,6 +172,7 @@ while getopts "j:l:u:p:t:" opt; do
   # save HTTP response code to variable, API response to file (new_chg_response.json)
   if [[ -n "$token" ]]; then
     response=$(curl --request POST \
+      --location \
       --url "${URL}" \
       --header "Authorization: Bearer ${token}" \
       --header "Accept: application/json" \
@@ -179,6 +180,7 @@ while getopts "j:l:u:p:t:" opt; do
       --silent -w "%{http_code}" -o new_chg_response.json)
   else
     response=$(curl --request POST \
+      --location \
       --url "${URL}" \
       --user "${username}:${password}" \
       --header "Accept: application/json" \
@@ -256,7 +258,7 @@ main() {
 
   # test if url is valid and reachable
   # do we need to add normalization here? ie, ensure https:// or http:// is present?
-  if ! curl -s --head "$sn_url" | grep "HTTP/[1-9]* [2][0-9][0-9]" > /dev/null; then
+  if ! curl -L -s --head "$sn_url" | grep "HTTP/[1-9]* [2][0-9][0-9]" > /dev/null; then
     err "Invalid or unreachable URL: $sn_url"
     exit 1
   fi
