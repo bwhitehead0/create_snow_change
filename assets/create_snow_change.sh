@@ -27,7 +27,7 @@ url_encode_string() {
 }
 
 # get sys_id
-get_sys_id() {
+get_ci_sys_id() {
   # needs: timeout, ci_name, sn_url, (username & password or token)
   # ${sn_url}/api/now/table/cmdb_ci_service_discovered?sysparm_fields=name,sys_id&timeout=${timeout}&sysparm_query=name=${encoded_ci_name}
   local ci_name=""
@@ -103,17 +103,34 @@ get_sys_id() {
   fi
 }
 
-
 # create JSON payload
 create_json_payload() {
-  local sys_id="${1}"
-  local change_description="${2}"
-  cat <<EOF
-{
-  "sys_id": "${sys_id}",
-  "description": "${change_description}"
-}
-EOF
+  local description=""
+  local short_description=""
+  local ci_sys_id=""
+
+  while getopts "c:d:s:" opt; do
+    case "$opt" in
+      c) ci_sys_id="$OPTARG" ;;
+      d) description="$OPTARG" ;;
+      s) short_description="$OPTARG" ;;
+      *) err "Invalid option: -$OPTARG"; exit 1 ;;
+    esac
+  done
+  # create JSON payload
+  # this needs to be way more dynamic - chg_model, x_kpmg3_pit_change_testing_signoff shouldn't be hardcoded, and x_kpmg3_pit_change_testing_signoff looks like a custom field anyway.
+  # this likely limits the use of this script to our internal environment, and even then, the differences between prod and nonprod servicenow makes that even more difficult.
+  json_payload="{\"chg_model\": \"Standard\", \"description\": \"${description}\", \"short_description\": \"${short_description}\", \"cmdb_ci\": \"${ci_sys_id}\", \"type\": \"Standard\", \"x_kpmg3_pit_change_testing_signoff\": \"PreProd Change\"}"
+
+  # silently validate the JSON
+  if ! echo "$json_payload" | jq empty > /dev/null 2>&1; then
+    err "Invalid JSON payload. Check input values."
+    exit 1
+  else
+    echo "Valid JSON payload."
+  fi
+
+  echo "${json_payload}"
 }
 
 # create change request
@@ -123,15 +140,12 @@ create_chg() {
   echo "Change request created with payload: ${json_payload}"
 }
 
-# return payload
-return_payload() {
-  local payload="${1}"
-  echo "${payload}"
-}
-
 # primary function to grab all passed parameters and call other functions
 main() {
+  # ! data such as tag, environment, etc should all exist outside of this script. any references passed in should be validated in the workflow, and addressed in description/short_description only.
   local ci_name=""
+  # local encoded_ci_name=""
+  local ci_sys_id=""
   local sn_url=""
   local description=""
   local short_description=""
@@ -139,7 +153,7 @@ main() {
   local password=""
   local token=""
   local timeout="60"
-  local response="short"
+  local response_type="short"
 
   while getopts "c:l:d:s:u:p:t:o:r:" opt; do
     case "$opt" in
@@ -151,23 +165,24 @@ main() {
       p) password="$OPTARG" ;;
       t) token="$OPTARG" ;;
       o) timeout="$OPTARG" ;;
-      r) response="$OPTARG" ;;
+      r) response_type="$OPTARG" ;;
       *) echo "Invalid option: -$OPTARG" >&2; exit 1 ;;
     esac
   done
 
   # VALIDATION STEPS
   # check for required parameters
+  # double check this logic around user/pass/token
   if [[ -z "$ci_name" || -z "$sn_url" || -z "$short_description" || ( -z "$username" && -z "$token" ) ]]; then
     err "Missing required parameters."
     exit 1
   fi
 
-  # convert response to lowercase and check if it is 'full' or 'short'
-  response=$(echo "$response" | tr '[:upper:]' '[:lower:]')
-  if [[ "$response" != "full" && "$response" != "short" ]]; then
+  # convert response_type to lowercase and check if it is 'full' or 'short'
+  response_type=$(echo "$response_type" | tr '[:upper:]' '[:lower:]')
+  if [[ "$response_type" != "full" && "$response_type" != "short" ]]; then
     err "Invalid response type. Use 'full' or 'short'. Defaulting to 'short'."
-    response="short"
+    response_type="short"
   fi
 
   # test if url is valid and reachable
@@ -177,11 +192,10 @@ main() {
   fi
 
 
-  encoded_ci_name=$(url_encode_string "$ci_name")
-  sys_id=$(get_sys_id "$encoded_ci_name")
-  json_payload=$(create_json_payload "$sys_id" "$encoded_description")
+  # encoded_ci_name=$(url_encode_string "$ci_name") # we just call this in get_ci_sys_id
+  ci_sys_id=$(get_ci_sys_id "$ci_name") # done
+  json_payload=$(create_json_payload -c "$ci_sys_id" "$encoded_description") # TODO
   create_chg "$json_payload"
-  return_payload "$json_payload"
 
 
 }
