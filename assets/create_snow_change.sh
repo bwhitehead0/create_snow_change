@@ -8,9 +8,11 @@ err() {
 # check if required apps are installed
 check_application_installed() {
     if [ -x "$(command -v "${1}")" ]; then
-        true
+      echo "${1} is found"
+      true
     else
-        false
+      echo "${1} is not found"
+      false
     fi
 }
 
@@ -228,12 +230,12 @@ main() {
   # VALIDATION STEPS
   # check if jq and curl are installed
   # ? add version output if installed?
-  if [ ! "$(check_application_installed jq)" ]; then
+  if ! check_application_installed jq; then
     err "jq not available, aborting."
     exit 1
   fi
 
-  if [ ! "$(check_application_installed curl)" ]; then
+  if ! check_application_installed curl; then
     err "curl not available, aborting."
     exit 1
   fi
