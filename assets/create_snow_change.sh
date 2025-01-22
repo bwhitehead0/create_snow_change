@@ -5,6 +5,14 @@ err() {
     echo "Error: $1" >&2
 }
 
+# check if required apps are installed
+check_application_installed() {
+    if [ -x "$(command -v "${1}")" ]; then
+        true
+    else
+        false
+    fi
+}
 
 # URL encode the CI name
 url_encode_string() {
@@ -127,10 +135,9 @@ create_json_payload() {
     err "Invalid JSON payload. Check input values."
     exit 1
   else
-    echo "Valid JSON payload."
+    echo "${json_payload}"
   fi
 
-  echo "${json_payload}"
 }
 
 # create change request
@@ -171,6 +178,19 @@ main() {
   done
 
   # VALIDATION STEPS
+  # check if jq and curl are installed
+  # ? add version output if installed?
+  if [ ! "$(check_application_installed jq)" ]; then
+    err "jq not available, aborting."
+    exit 1
+  fi
+
+  if [ ! "$(check_application_installed curl)" ]; then
+    err "curl not available, aborting."
+    exit 1
+  fi
+
+
   # check for required parameters
   # double check this logic around user/pass/token
   if [[ -z "$ci_name" || -z "$sn_url" || -z "$short_description" || ( -z "$username" && -z "$token" ) ]]; then
