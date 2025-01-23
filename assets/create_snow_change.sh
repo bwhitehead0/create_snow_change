@@ -2,20 +2,25 @@
 
 set -euo pipefail
 
+# set DEBUG to false, will be evaluated in main()
+DEBUG=false
+
 # error output function
 err() {
-    echo "Error: $1" >&2
+  # date format year-month-day hour:minute:second.millisecond+timezone
+    echo "$(date +'%Y-%m-%dT%H:%M:%S.%3N%z') - Error - $1" >&2
 }
 
 dbg() {
-    echo "Debug: $1" >&2
+  # date format year-month-day hour:minute:second.millisecond+timezone
+  if [[ "$DEBUG" == true ]]; then
+    echo "$(date +'%Y-%m-%dT%H:%M:%S.%3N%z') - Debug - $1" >&2
+  fi
 }
 
 # check if required apps are installed
 check_application_installed() {
-    if [[ "$DEBUG" == true ]]; then
-        echo "DEBUG check_application_installed(): Checking if $1 is installed."
-    fi
+    dbg "check_application_installed(): Checking if $1 is installed."
 
     if [ -x "$(command -v "${1}")" ]; then
       true
@@ -28,11 +33,8 @@ check_application_installed() {
 url_encode_string() {
     local input="$1"
     local output=""
-    local i
 
-    if [[ "$DEBUG" == true ]]; then
-        echo "DEBUG url_encode_string(): Encoding string: $input"
-    fi
+    dbg "url_encode_string(): Encoding string: $input"
 
     for (( i=0; i<${#input}; i++ )); do
         char="${input:i:1}"
@@ -45,17 +47,20 @@ url_encode_string() {
                 ;;
         esac
     done
+    dbg "url_encode_string(): Encoded string: $output"
     echo "$output"
 }
 
 # get sys_id
 get_ci_sys_id() {
-  dbg ":::::::DEBUG: get_ci_sys_id() all passed parameters: $*"
-  dbg ":::::::DEBUG: get_ci_sys_id(): DEBUG=$DEBUG"
+  local OPTIND=1 # reset OPTIND so getopts starts at 1 and parameters are parsed correctly
+
+  # dbg ":::::::DEBUG: get_ci_sys_id() all passed parameters (\$*): $*"
+  # dbg ":::::::DEBUG: get_ci_sys_id(): DEBUG=$DEBUG"
   # needs: timeout, ci_name, sn_url, (username & password or token)
   # ${sn_url}/api/now/table/cmdb_ci_service_discovered?sysparm_fields=name,sys_id&timeout=${timeout}&sysparm_query=name=${encoded_ci_name}
   
-  local gcs_ci_name=""
+  local ci_name=""
   local encoded_ci_name=""
   local timeout="60"
   local sn_url=""
@@ -64,50 +69,42 @@ get_ci_sys_id() {
   local token=""
   local response=""
   local sys_id=""
-
-  dbg ":::::::DEBUG: get_ci_sys_id() all passed parameters: $*"
-  dbg ":::::::DEBUG: get_ci_sys_id(): DEBUG=$DEBUG"
+  local ci_name=""
 
   # parse arguments
-  while getopts c:l:u:p:t:o: arg; do
+  while getopts ":c:l:u:p:t:o:" arg; do
     case "${arg}" in
-      c) err ":::Set ci_name to $OPTARG"; gcs_ci_name="${OPTARG}" ;;
+      c) ci_name="${OPTARG}" ;;
       l) sn_url="$OPTARG" ;;
       u) username="$OPTARG" ;;
       p) password="$OPTARG" ;;
       t) token="$OPTARG" ;;
       o) timeout="$OPTARG" ;;
       *)
-        echo "Invalid option: -$OPTARG" >&2
+        err "Invalid option: -$OPTARG"
         exit 1
         ;;
     esac
   done
 
-  dbg " DEBUG get_ci_sys_id(): $DEBUG"
-  dbg " DEBUG_PASS get_ci_sys_id(): $DEBUG_PASS"
-
   # Debug output all passed parameters
-  dbg "get_ci_sys_id(): TESTING FOR DEBUG STATUS. DEBUG=$DEBUG, DEBUG_PASS=$DEBUG_PASS"
-  if [[ "$DEBUG" == true ]]; then
-    dbg "DEBUG get_ci_sys_id(): All passed parameters:"
-    dbg " gcs_ci_name: $gcs_ci_name"
-    dbg " sn_url: $sn_url"
-    dbg " username: $username"
-    if [[ "$DEBUG_PASS" == true ]]; then
-      dbg " password: $password"
-    fi
-    dbg " token: $token"
-    dbg " timeout: $timeout"
-    dbg " DEBUG: $DEBUG"
-    dbg " DEBUG_PASS: $DEBUG_PASS"
+  dbg "get_ci_sys_id(): All passed parameters:"
+  dbg " ci_name: $ci_name"
+  dbg " sn_url: $sn_url"
+  dbg " username: $username"
+  if [[ "$DEBUG_PASS" == true ]]; then
+    dbg " password: $password"
   fi
+  dbg " token: $token"
+  dbg " timeout: $timeout"
+  dbg " DEBUG: $DEBUG"
+  dbg " DEBUG_PASS: $DEBUG_PASS"
 
   # validation steps
   # check for required parameters
   # double check this logic around user/pass/token
-  if [[ -z "$gcs_ci_name" ]]; then
-    err "get_ci_sys_id(): Missing required parameter: gcs_ci_name."
+  if [[ -z "$ci_name" ]]; then
+    err "get_ci_sys_id(): Missing required parameter: ci_name."
     exit 1
   fi
 
@@ -122,26 +119,31 @@ get_ci_sys_id() {
   fi
 
   # get encoded_ci_name
-  encoded_ci_name=$(url_encode_string "$gcs_ci_name")
+  encoded_ci_name=$(url_encode_string "$ci_name")
+  dbg "get_ci_sys_id(): encoded_ci_name: ${encoded_ci_name}"
 
   # build URL
   # break up here so we can add logic around pieces of the API call as needed in the future
-  local API_ENDPOINT="/api/now/table/cmdb_ci_service_discovered"
-  local API_PARAMETERS="sysparm_fields=name,sys_id&timeout=${timeout}&sysparm_query=name=${encoded_ci_name}"
-  local URL="${sn_url}${API_ENDPOINT}?${API_PARAMETERS}"
+  API_ENDPOINT="/api/now/table/cmdb_ci_service_discovered"
+  API_PARAMETERS="sysparm_fields=name,sys_id&timeout=${timeout}&sysparm_query=name=""$encoded_ci_name"
+  URL="${sn_url}${API_ENDPOINT}?${API_PARAMETERS}"
+
+  dbg "get_ci_sys_id(): URL: ${URL}"
 
   # if token is set use that, otherwise use username and password
   # if both are set, use token
   # save HTTP response code to variable, API response to file (sys_id.json)
   if [[ -n "$token" ]]; then
-    response=$(curl --request GET \
+    dbg "get_ci_sys_id(): Using token for authentication."
+    response=$(curl -k --request GET \
       --location \
       --url "${URL}" \
       --header "Authorization: Bearer ${token}" \
       --header "Accept: application/json" \
       --silent -w "%{http_code}" -o sys_id.json)
   else
-    response=$(curl --request GET \
+    dbg "get_ci_sys_id(): Using username and password for authentication."
+    response=$(curl -k --request GET \
       --location \
       --url "${URL}" \
       --user "${username}:${password}" \
@@ -156,6 +158,7 @@ get_ci_sys_id() {
     # remove sys_id.json
     sys_id=$(jq -r '.result[0].sys_id' sys_id.json)
     rm sys_id.json
+    dbg "get_ci_sys_id(): sys_id: ${sys_id}"
     echo "${sys_id}"
   else
     err "Failed to get sys_id. HTTP response code: $response"
@@ -165,6 +168,8 @@ get_ci_sys_id() {
 
 # create JSON payload
 create_json_payload() {
+  local OPTIND=1 # reset OPTIND so getopts starts at 1 and parameters are parsed correctly
+
   local description=""
   local short_description=""
   local ci_sys_id=""
@@ -183,6 +188,8 @@ create_json_payload() {
   # this likely limits the use of this script to our internal environment, and even then, the differences between prod and nonprod servicenow makes that even more difficult.
   json_payload="{\"chg_model\": \"Standard\", \"description\": \"${description}\", \"short_description\": \"${short_description}\", \"cmdb_ci\": \"${ci_sys_id}\", \"type\": \"Standard\", \"x_kpmg3_pit_change_testing_signoff\": \"PreProd Change\"}"
 
+  dbg "create_json_payload(): json_payload: ${json_payload}"
+
   # silently validate the JSON
   if ! echo "$json_payload" | jq empty > /dev/null 2>&1; then
     err "Invalid JSON payload. Check input values."
@@ -195,6 +202,8 @@ create_json_payload() {
 # create change request
 create_chg() {
   # needs: json_payload, sn_url, (username & password or token)
+  local OPTIND=1 # reset OPTIND so getopts starts at 1 and parameters are parsed correctly
+  
   local json_payload=""
   local sn_url=""
   local username=""
@@ -241,30 +250,39 @@ create_chg() {
   # if both are set, use token
   # save HTTP response code to variable, API response to file (new_chg_response.json)
   if [[ -n "$token" ]]; then
-    response=$(curl --request POST \
-      --location \
-      --url "${URL}" \
-      --header "Authorization: Bearer ${token}" \
-      --header "Accept: application/json" \
-      --data "${json_payload}" \
-      --silent -w "%{http_code}" -o new_chg_response.json)
+    dbg "create_chg(): Using token for authentication."
+    # response=$(curl --request POST \
+    #   --location \
+    #   --url "${URL}" \
+    #   --header "Authorization: Bearer ${token}" \
+    #   --header "Accept: application/json" \
+    #   --header "Content-Type: application/json" \
+    #   --data "${json_payload}" \
+    #   --silent -w "%{http_code}" -o new_chg_response.json)
   else
-    response=$(curl --request POST \
-      --location \
-      --url "${URL}" \
-      --user "${username}:${password}" \
-      --header "Accept: application/json" \
-      --data "${json_payload}" \
-      --silent -w "%{http_code}" -o new_chg_response.json)
+    dbg "create_chg(): Using username and password for authentication."
+    # response=$(curl --request POST \
+    #   --location \
+    #   --url "${URL}" \
+    #   --user "${username}:${password}" \
+    #   --header "Accept: application/json" \
+    #   --header "Content-Type: application/json" \
+    #   --data "${json_payload}" \
+    #   --silent -w "%{http_code}" -o new_chg_response.json)
   fi
+
+  #### ! temporary set response to 400
+  response=400
 
   # check if response is 2xx
   if [[ "$response" =~ ^2 ]]; then
     # successful API call. return CHG detail payload and clean up
     cat new_chg_response.json
-    rm new_chg_response.json
+    rm new_chg_response.json 2> /dev/null
   else
     err "Failed to create CHG. HTTP response code: $response"
+    # clean up file quietly, error to /dev/null
+    rm new_chg_response.json 2> /dev/null
     exit 1
   fi
 }
@@ -272,6 +290,8 @@ create_chg() {
 # primary function to grab all passed parameters and call other functions
 main() {
   # ! data such as tag, environment, etc should all exist outside of this script. any references passed in should be validated in the workflow, and addressed in description/short_description only.
+  dbg "main(): All passed parameters (\$*): $*"
+
   local ci_name=""
   # local encoded_ci_name=""
   local ci_sys_id=""
@@ -299,7 +319,7 @@ main() {
       r) response_type="$OPTARG" ;;
       D) DEBUG=true ;;
       P) DEBUG_PASS=true ;;
-      *) echo "Invalid option: -$OPTARG" >&2; exit 1 ;;
+      *) err "Invalid option: -$OPTARG"; exit 1 ;;
     esac
   done
 
@@ -308,22 +328,21 @@ main() {
   export DEBUG_PASS
 
   # debug output all passed parameters
-  if [[ "$DEBUG" == true ]]; then
-    dbg "main(): All passed parameters:"
-    dbg " ci_name: $ci_name"
-    dbg " sn_url: $sn_url"
-    dbg " description: $description"
-    dbg " short_description: $short_description"
-    dbg " username: $username"
-    if [[ "$DEBUG_PASS" == true ]]; then
-      dbg " password: $password"
-    fi
-    dbg " token: $token"
-    dbg " timeout: $timeout"
-    dbg " response_type: $response_type"
-    dbg " DEBUG: $DEBUG"
-    dbg " DEBUG_PASS: $DEBUG_PASS"
+  dbg "main(): All passed parameters:"
+  dbg " ci_name: $ci_name"
+  dbg " sn_url: $sn_url"
+  dbg " description: $description"
+  dbg " short_description: $short_description"
+  dbg " username: $username"
+  if [[ "$DEBUG_PASS" == true ]]; then
+    dbg " password: $password"
   fi
+  dbg " token: $token"
+  dbg " timeout: $timeout"
+  dbg " response_type: $response_type"
+  dbg " DEBUG: $DEBUG"
+  dbg " DEBUG_PASS: $DEBUG_PASS"
+
 
   # VALIDATION STEPS
   # check if jq and curl are installed
@@ -348,7 +367,7 @@ main() {
   # convert response_type to lowercase and check if it is 'full' or 'short'
   response_type=$(echo "$response_type" | tr '[:upper:]' '[:lower:]')
   if [[ "$response_type" != "full" && "$response_type" != "short" ]]; then
-    err "Invalid response type. Use 'full' or 'short'. Defaulting to 'short'."
+    dbg "Invalid response type. Use 'full' or 'short'. Defaulting to 'short'."
     response_type="short"
   fi
 
@@ -359,11 +378,8 @@ main() {
     exit 1
   fi
 
-  # debug output function calls
-  dbg ' DEBUG: main() >> get_ci_sys_id(): get_ci_sys_id -c "${ci_name}" -l "${sn_url}" -u "${username}" -p "${password}" -t "${token}"'
-  dbg " DEBUG: main() >> get_ci_sys_id(): get_ci_sys_id -c ${ci_name} -l ${sn_url} -u ${username} -p ${password} -t ${token}"
   ci_sys_id=$(get_ci_sys_id -c "$ci_name" -l "${sn_url}" -u "${username}" -p "${password}" -t "${token}") # done
-  json_payload=$(create_json_payload -c "${ci_sys_id}" -D "$DEBUG" -P "$DEBUG_PASS") # done
+  json_payload=$(create_json_payload -c "${ci_sys_id}" -d "${description}" -s "${short_description}") # done
   create_chg -j "${json_payload}" -l "${sn_url}" -u "${username}" -p "${password}" -t "${token}" # done
 
 }
