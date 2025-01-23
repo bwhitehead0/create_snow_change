@@ -46,6 +46,7 @@ get_ci_sys_id() {
   local password=""
   local token=""
   local response=""
+  local sys_id=""
 
   # parse arguments
   while getopts "c:l:u:p:t:o:" opt; do
@@ -63,11 +64,40 @@ get_ci_sys_id() {
     esac
   done
 
+  echo " DEBUG get_ci_sys_id(): $DEBUG"
+  echo " DEBUG_PASS get_ci_sys_id(): $DEBUG_PASS"
+
+  # Debug output all passed parameters
+  echo "get_ci_sys_id(): TESTING FOR DEBUG STATUS"
+  if [[ "$DEBUG" == true ]]; then
+    echo "DEBUG get_ci_sys_id(): All passed parameters:"
+    echo " ci_name: $ci_name"
+    echo " sn_url: $sn_url"
+    echo " username: $username"
+    if [[ "$DEBUG_PASS" == true ]]; then
+      echo " password: $password"
+    fi
+    echo " token: $token"
+    echo " timeout: $timeout"
+    echo " DEBUG: $DEBUG"
+    echo " DEBUG_PASS: $DEBUG_PASS"
+  fi
+
   # validation steps
   # check for required parameters
   # double check this logic around user/pass/token
-  if [[ -z "$ci_name" || -z "$sn_url" || (-z "$username" && -z "$token") ]]; then
-    err "Missing required parameters."
+  if [[ -z "$ci_name" ]]; then
+    err "get_ci_sys_id(): Missing required parameter: ci_name."
+    exit 1
+  fi
+
+  if [[ -z "$sn_url" ]]; then
+    err "get_ci_sys_id(): Missing required parameter: sn_url."
+    exit 1
+  fi
+
+  if [[ -z "$username" && -z "$token" ]]; then
+    err "get_ci_sys_id(): Missing required parameter: either username or token."
     exit 1
   fi
 
@@ -162,6 +192,26 @@ create_chg() {
     esac
   done
 
+  # Debug output all passed parameters
+  if [[ "$DEBUG" == true ]]; then
+    echo "DEBUG create_chg(): All passed parameters:"
+    echo " json_payload: $json_payload"
+    echo " sn_url: $sn_url"
+    echo " username: $username"
+    if [[ "$DEBUG_PASS" == true ]]; then
+      echo " password: $password"
+    fi
+    echo " token: $token"
+    echo " DEBUG: $DEBUG"
+    echo " DEBUG_PASS: $DEBUG_PASS"
+  fi
+
+  # validate required parameters
+  if [[ -z "$json_payload" || -z "$sn_url" || (-z "$username" && -z "$token") ]]; then
+    err "create_chg(): Missing required parameters: json_payload, sn_url, and either username or token."
+    exit 1
+  fi
+
   # build URL
   # break up here so we can add logic around pieces of the API call as needed in the future
   local API_ENDPOINT="/api/sn_chg_rest/v1/change"
@@ -213,8 +263,10 @@ main() {
   local token=""
   local timeout="60"
   local response_type="short"
+  DEBUG=false
+  DEBUG_PASS=false
 
-  while getopts "c:l:d:s:u:p:t:o:r:" opt; do
+  while getopts "c:l:d:s:u:p:t:o:r:DP" opt; do
     case "$opt" in
       c) ci_name="$OPTARG" ;;
       l) sn_url="$OPTARG" ;;
@@ -225,9 +277,29 @@ main() {
       t) token="$OPTARG" ;;
       o) timeout="$OPTARG" ;;
       r) response_type="$OPTARG" ;;
+      D) DEBUG=true ;;
+      P) DEBUG_PASS=true ;;
       *) echo "Invalid option: -$OPTARG" >&2; exit 1 ;;
     esac
   done
+
+  # debug output all passed parameters
+  if [[ "$DEBUG" == true ]]; then
+    echo "DEBUG main(): All passed parameters:"
+    echo " ci_name: $ci_name"
+    echo " sn_url: $sn_url"
+    echo " description: $description"
+    echo " short_description: $short_description"
+    echo " username: $username"
+    if [[ "$DEBUG_PASS" == true ]]; then
+      echo " password: $password"
+    fi
+    echo " token: $token"
+    echo " timeout: $timeout"
+    echo " response_type: $response_type"
+    echo " DEBUG: $DEBUG"
+    echo " DEBUG_PASS: $DEBUG_PASS"
+  fi
 
   # VALIDATION STEPS
   # check if jq and curl are installed
@@ -245,7 +317,7 @@ main() {
   # check for required parameters
   # double check this logic around user/pass/token
   if [[ -z "$ci_name" || -z "$sn_url" || -z "$short_description" || ( -z "$username" && -z "$token" ) ]]; then
-    err "Missing required parameters."
+    err "main(): Missing required parameters: ci_name, sn_url, short_description, and either username or token."
     exit 1
   fi
 
@@ -258,14 +330,14 @@ main() {
 
   # test if url is valid and reachable
   # do we need to add normalization here? ie, ensure https:// or http:// is present?
-  if ! curl -L -s --head "$sn_url" | grep "HTTP/[1-9]* [2][0-9][0-9]" > /dev/null; then
+  if ! curl -L -s -w "%{http_code}" "$sn_url" -o /dev/null | grep "200" > /dev/null; then
     err "Invalid or unreachable URL: $sn_url"
     exit 1
   fi
 
-  ci_sys_id=$(get_ci_sys_id "$ci_name") # done
-  json_payload=$(create_json_payload -c "$ci_sys_id") # done
-  create_chg -j "$json_payload" -l "$sn_url" -u "${username}" -p "${password}" -t "${token}" # done
+  ci_sys_id=$(get_ci_sys_id -c "${ci_name}" -l "${sn_url}" -u "${username}" -p "${password}" -t "${token}") # done
+  json_payload=$(create_json_payload -c "${ci_sys_id}" -D "$DEBUG" -P "$DEBUG_PASS") # done
+  create_chg -j "${json_payload}" -l "${sn_url}" -u "${username}" -p "${password}" -t "${token}" # done
 
 }
 
