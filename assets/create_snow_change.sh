@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euo pipefail
+
 # error output function
 err() {
     echo "Error: $1" >&2
@@ -7,6 +9,10 @@ err() {
 
 # check if required apps are installed
 check_application_installed() {
+    if [[ "$DEBUG" == true ]]; then
+        echo "DEBUG check_application_installed(): Checking if $1 is installed."
+    fi
+
     if [ -x "$(command -v "${1}")" ]; then
       true
     else
@@ -19,6 +25,10 @@ url_encode_string() {
     local input="$1"
     local output=""
     local i
+
+    if [[ "$DEBUG" == true ]]; then
+        echo "DEBUG url_encode_string(): Encoding string: $input"
+    fi
 
     for (( i=0; i<${#input}; i++ )); do
         char="${input:i:1}"
@@ -38,6 +48,8 @@ url_encode_string() {
 get_ci_sys_id() {
   # needs: timeout, ci_name, sn_url, (username & password or token)
   # ${sn_url}/api/now/table/cmdb_ci_service_discovered?sysparm_fields=name,sys_id&timeout=${timeout}&sysparm_query=name=${encoded_ci_name}
+  echo ":::::::DEBUG: get_ci_sys_id() all passed parameters: $*"
+  echo ":::::::DEBUG: get_ci_sys_id(): DEBUG=$DEBUG"
   local ci_name=""
   local encoded_ci_name=""
   local timeout="60"
@@ -48,10 +60,13 @@ get_ci_sys_id() {
   local response=""
   local sys_id=""
 
+
   # parse arguments
   while getopts "c:l:u:p:t:o:" opt; do
     case "$opt" in
-    c) ci_name="$OPTARG" ;;
+    c)
+      ci_name="$OPTARG"
+      echo ":::Set ci_name to $OPTARG" ;;
     l) sn_url="$OPTARG" ;;
     u) username="$OPTARG" ;;
     p) password="$OPTARG" ;;
@@ -68,7 +83,7 @@ get_ci_sys_id() {
   echo " DEBUG_PASS get_ci_sys_id(): $DEBUG_PASS"
 
   # Debug output all passed parameters
-  echo "get_ci_sys_id(): TESTING FOR DEBUG STATUS"
+  echo "get_ci_sys_id(): TESTING FOR DEBUG STATUS. DEBUG=$DEBUG, DEBUG_PASS=$DEBUG_PASS"
   if [[ "$DEBUG" == true ]]; then
     echo "DEBUG get_ci_sys_id(): All passed parameters:"
     echo " ci_name: $ci_name"
@@ -335,6 +350,9 @@ main() {
     exit 1
   fi
 
+  # debug output function calls
+  echo ' DEBUG: main() >> get_ci_sys_id(): get_ci_sys_id -c "${ci_name}" -l "${sn_url}" -u "${username}" -p "${password}" -t "${token}"'
+  echo " DEBUG: main() >> get_ci_sys_id(): get_ci_sys_id -c ${ci_name} -l ${sn_url} -u ${username} -p ${password} -t ${token}"
   ci_sys_id=$(get_ci_sys_id -c "${ci_name}" -l "${sn_url}" -u "${username}" -p "${password}" -t "${token}") # done
   json_payload=$(create_json_payload -c "${ci_sys_id}" -D "$DEBUG" -P "$DEBUG_PASS") # done
   create_chg -j "${json_payload}" -l "${sn_url}" -u "${username}" -p "${password}" -t "${token}" # done
