@@ -7,12 +7,12 @@ DEBUG=false
 
 # error output function
 err() {
-  # date format year-month-day hour:minute:second.millisecond+timezone
+  # date format year-month-day hour:minute:second.millisecond+timezone - requires coreutils date
     echo "$(date +'%Y-%m-%dT%H:%M:%S.%3N%z') - Error - $1" >&2
 }
 
 dbg() {
-  # date format year-month-day hour:minute:second.millisecond+timezone
+  # date format year-month-day hour:minute:second.millisecond+timezone - requires coreutils date
   if [[ "$DEBUG" == true ]]; then
     echo "$(date +'%Y-%m-%dT%H:%M:%S.%3N%z') - Debug - $1" >&2
   fi
@@ -53,12 +53,9 @@ url_encode_string() {
 
 # get sys_id
 get_ci_sys_id() {
-  local OPTIND=1 # reset OPTIND so getopts starts at 1 and parameters are parsed correctly
-
-  # dbg ":::::::DEBUG: get_ci_sys_id() all passed parameters (\$*): $*"
-  # dbg ":::::::DEBUG: get_ci_sys_id(): DEBUG=$DEBUG"
   # needs: timeout, ci_name, sn_url, (username & password or token)
   # ${sn_url}/api/now/table/cmdb_ci_service_discovered?sysparm_fields=name,sys_id&timeout=${timeout}&sysparm_query=name=${encoded_ci_name}
+  local OPTIND=1 # reset OPTIND so getopts starts at 1 and parameters are parsed correctly
   
   local ci_name=""
   local encoded_ci_name=""
@@ -153,12 +150,13 @@ get_ci_sys_id() {
 
   # check if response is 2xx
   if [[ "$response" =~ ^2 ]]; then
-    # successful API call. get sys_id and clean up
+    # HTTP 2xx returned, successful API call. get sys_id and clean up
     # get sys_id from sys_id.json
     # remove sys_id.json
     sys_id=$(jq -r '.result[0].sys_id' sys_id.json)
     rm sys_id.json
     dbg "get_ci_sys_id(): sys_id: ${sys_id}"
+    # return sys_id
     echo "${sys_id}"
   else
     err "Failed to get sys_id. HTTP response code: $response"
@@ -185,7 +183,7 @@ create_json_payload() {
 
   # create JSON payload
   # this needs to be way more dynamic - chg_model, x_kpmg3_pit_change_testing_signoff shouldn't be hardcoded, and x_kpmg3_pit_change_testing_signoff looks like a custom field anyway.
-  # this likely limits the use of this script to our internal environment, and even then, the differences between prod and nonprod servicenow makes that even more difficult.
+  # this likely limits the use of this script to our internal environment, and even then, the differences between prod and nonprod servicenow may make that even more difficult.
   json_payload="{\"chg_model\": \"Standard\", \"description\": \"${description}\", \"short_description\": \"${short_description}\", \"cmdb_ci\": \"${ci_sys_id}\", \"type\": \"Standard\", \"x_kpmg3_pit_change_testing_signoff\": \"PreProd Change\"}"
 
   dbg "create_json_payload(): json_payload: ${json_payload}"
@@ -195,6 +193,7 @@ create_json_payload() {
     err "Invalid JSON payload. Check input values."
     exit 1
   else
+    # return json payload
     echo "${json_payload}"
   fi
 }
@@ -222,18 +221,16 @@ create_chg() {
   done
 
   # Debug output all passed parameters
-  if [[ "$DEBUG" == true ]]; then
-    dbg "DEBUG create_chg(): All passed parameters:"
-    dbg " json_payload: $json_payload"
-    dbg " sn_url: $sn_url"
-    dbg " username: $username"
-    if [[ "$DEBUG_PASS" == true ]]; then
-      dbg " password: $password"
-    fi
-    dbg " token: $token"
-    dbg " DEBUG: $DEBUG"
-    dbg " DEBUG_PASS: $DEBUG_PASS"
+  dbg "DEBUG create_chg(): All passed parameters:"
+  dbg " json_payload: $json_payload"
+  dbg " sn_url: $sn_url"
+  dbg " username: $username"
+  if [[ "$DEBUG_PASS" == true ]]; then
+    dbg " password: $password"
   fi
+  dbg " token: $token"
+  dbg " DEBUG: $DEBUG"
+  dbg " DEBUG_PASS: $DEBUG_PASS"
 
   # validate required parameters
   if [[ -z "$json_payload" || -z "$sn_url" || (-z "$username" && -z "$token") ]]; then
@@ -251,32 +248,32 @@ create_chg() {
   # save HTTP response code to variable, API response to file (new_chg_response.json)
   if [[ -n "$token" ]]; then
     dbg "create_chg(): Using token for authentication."
-    # response=$(curl --request POST \
-    #   --location \
-    #   --url "${URL}" \
-    #   --header "Authorization: Bearer ${token}" \
-    #   --header "Accept: application/json" \
-    #   --header "Content-Type: application/json" \
-    #   --data "${json_payload}" \
-    #   --silent -w "%{http_code}" -o new_chg_response.json)
+    response=$(curl -k --request POST \
+      --location \
+      --url "${URL}" \
+      --header "Authorization: Bearer ${token}" \
+      --header "Accept: application/json" \
+      --header "Content-Type: application/json" \
+      --data "${json_payload}" \
+      --silent -w "%{http_code}" -o new_chg_response.json)
   else
     dbg "create_chg(): Using username and password for authentication."
-    # response=$(curl --request POST \
-    #   --location \
-    #   --url "${URL}" \
-    #   --user "${username}:${password}" \
-    #   --header "Accept: application/json" \
-    #   --header "Content-Type: application/json" \
-    #   --data "${json_payload}" \
-    #   --silent -w "%{http_code}" -o new_chg_response.json)
+    response=$(curl -k --request POST \
+      --location \
+      --url "${URL}" \
+      --user "${username}:${password}" \
+      --header "Accept: application/json" \
+      --header "Content-Type: application/json" \
+      --data "${json_payload}" \
+      --silent -w "%{http_code}" -o new_chg_response.json)
   fi
 
   #### ! temporary set response to 400
-  response=400
+  # response=400
 
   # check if response is 2xx
   if [[ "$response" =~ ^2 ]]; then
-    # successful API call. return CHG detail payload and clean up
+    # HTTP 2xx, successful API call. return CHG detail payload and clean up
     cat new_chg_response.json
     rm new_chg_response.json 2> /dev/null
   else
@@ -293,7 +290,6 @@ main() {
   dbg "main(): All passed parameters (\$*): $*"
 
   local ci_name=""
-  # local encoded_ci_name=""
   local ci_sys_id=""
   local sn_url=""
   local description=""
@@ -301,12 +297,12 @@ main() {
   local username=""
   local password=""
   local token=""
-  local timeout="60"
-  local response_type="short"
+  local timeout="60" # default timeout value
+  local response_type="short" # default response type
   DEBUG=false
   DEBUG_PASS=false
 
-  while getopts "c:l:d:s:u:p:t:o:r:DP" opt; do
+  while getopts ":c:l:d:s:u:p:t:o:r:DP" opt; do
     case "$opt" in
       c) ci_name="$OPTARG" ;;
       l) sn_url="$OPTARG" ;;
@@ -319,6 +315,8 @@ main() {
       r) response_type="$OPTARG" ;;
       D) DEBUG=true ;;
       P) DEBUG_PASS=true ;;
+      :) err "Option -$OPTARG requires an argument."; exit 1 ;;
+      ?) err "Invalid option: -$OPTARG"; exit 1 ;;
       *) err "Invalid option: -$OPTARG"; exit 1 ;;
     esac
   done
@@ -346,7 +344,7 @@ main() {
 
   # VALIDATION STEPS
   # check if jq and curl are installed
-  # ? add version output if installed?
+  # ? add version output if installed? especially for curl since there may be argument changes for older versions
   if ! check_application_installed jq; then
     err "jq not available, aborting."
     exit 1
