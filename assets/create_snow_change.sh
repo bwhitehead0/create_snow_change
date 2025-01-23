@@ -50,15 +50,12 @@ url_encode_string() {
 
 # get sys_id
 get_ci_sys_id() {
-  dbg "why isn't anything happening"
   dbg ":::::::DEBUG: get_ci_sys_id() all passed parameters: $*"
   dbg ":::::::DEBUG: get_ci_sys_id(): DEBUG=$DEBUG"
-  dbg "params"
-  dbg "$@"
   # needs: timeout, ci_name, sn_url, (username & password or token)
   # ${sn_url}/api/now/table/cmdb_ci_service_discovered?sysparm_fields=name,sys_id&timeout=${timeout}&sysparm_query=name=${encoded_ci_name}
   
-  local ci_name=""
+  local gcs_ci_name=""
   local encoded_ci_name=""
   local timeout="60"
   local sn_url=""
@@ -72,11 +69,9 @@ get_ci_sys_id() {
   dbg ":::::::DEBUG: get_ci_sys_id(): DEBUG=$DEBUG"
 
   # parse arguments
-  while getopts "c:l:u:p:t:o:" opt; do
-    case "$opt" in
-      c)
-        ci_name="$OPTARG"
-        dbg ":::Set ci_name to $OPTARG" ;;
+  while getopts c:l:u:p:t:o: arg; do
+    case "${arg}" in
+      c) err ":::Set ci_name to $OPTARG"; gcs_ci_name="${OPTARG}" ;;
       l) sn_url="$OPTARG" ;;
       u) username="$OPTARG" ;;
       p) password="$OPTARG" ;;
@@ -96,7 +91,7 @@ get_ci_sys_id() {
   dbg "get_ci_sys_id(): TESTING FOR DEBUG STATUS. DEBUG=$DEBUG, DEBUG_PASS=$DEBUG_PASS"
   if [[ "$DEBUG" == true ]]; then
     dbg "DEBUG get_ci_sys_id(): All passed parameters:"
-    dbg " ci_name: $ci_name"
+    dbg " gcs_ci_name: $gcs_ci_name"
     dbg " sn_url: $sn_url"
     dbg " username: $username"
     if [[ "$DEBUG_PASS" == true ]]; then
@@ -111,8 +106,8 @@ get_ci_sys_id() {
   # validation steps
   # check for required parameters
   # double check this logic around user/pass/token
-  if [[ -z "$ci_name" ]]; then
-    err "get_ci_sys_id(): Missing required parameter: ci_name."
+  if [[ -z "$gcs_ci_name" ]]; then
+    err "get_ci_sys_id(): Missing required parameter: gcs_ci_name."
     exit 1
   fi
 
@@ -127,7 +122,7 @@ get_ci_sys_id() {
   fi
 
   # get encoded_ci_name
-  encoded_ci_name=$(url_encode_string "$ci_name")
+  encoded_ci_name=$(url_encode_string "$gcs_ci_name")
 
   # build URL
   # break up here so we can add logic around pieces of the API call as needed in the future
@@ -314,7 +309,7 @@ main() {
 
   # debug output all passed parameters
   if [[ "$DEBUG" == true ]]; then
-    dbg "DEBUG main(): All passed parameters:"
+    dbg "main(): All passed parameters:"
     dbg " ci_name: $ci_name"
     dbg " sn_url: $sn_url"
     dbg " description: $description"
@@ -359,7 +354,7 @@ main() {
 
   # test if url is valid and reachable
   # do we need to add normalization here? ie, ensure https:// or http:// is present?
-  if ! curl -L -s -w "%{http_code}" "$sn_url" -o /dev/null | grep "200" > /dev/null; then
+  if ! curl -Lk -s -w "%{http_code}" "$sn_url" -o /dev/null | grep "200" > /dev/null; then
     err "Invalid or unreachable URL: $sn_url"
     exit 1
   fi
