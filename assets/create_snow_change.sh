@@ -7,6 +7,10 @@ err() {
     echo "Error: $1" >&2
 }
 
+dbg() {
+    echo "Debug: $1" >&2
+}
+
 # check if required apps are installed
 check_application_installed() {
     if [[ "$DEBUG" == true ]]; then
@@ -46,10 +50,14 @@ url_encode_string() {
 
 # get sys_id
 get_ci_sys_id() {
+  dbg "why isn't anything happening"
+  dbg ":::::::DEBUG: get_ci_sys_id() all passed parameters: $*"
+  dbg ":::::::DEBUG: get_ci_sys_id(): DEBUG=$DEBUG"
+  dbg "params"
+  dbg "$@"
   # needs: timeout, ci_name, sn_url, (username & password or token)
   # ${sn_url}/api/now/table/cmdb_ci_service_discovered?sysparm_fields=name,sys_id&timeout=${timeout}&sysparm_query=name=${encoded_ci_name}
-  echo ":::::::DEBUG: get_ci_sys_id() all passed parameters: $*"
-  echo ":::::::DEBUG: get_ci_sys_id(): DEBUG=$DEBUG"
+  
   local ci_name=""
   local encoded_ci_name=""
   local timeout="60"
@@ -60,42 +68,44 @@ get_ci_sys_id() {
   local response=""
   local sys_id=""
 
+  dbg ":::::::DEBUG: get_ci_sys_id() all passed parameters: $*"
+  dbg ":::::::DEBUG: get_ci_sys_id(): DEBUG=$DEBUG"
 
   # parse arguments
   while getopts "c:l:u:p:t:o:" opt; do
     case "$opt" in
-    c)
-      ci_name="$OPTARG"
-      echo ":::Set ci_name to $OPTARG" ;;
-    l) sn_url="$OPTARG" ;;
-    u) username="$OPTARG" ;;
-    p) password="$OPTARG" ;;
-    t) token="$OPTARG" ;;
-    o) timeout="$OPTARG" ;;
-    *)
-      echo "Invalid option: -$OPTARG" >&2
-      exit 1
-      ;;
+      c)
+        ci_name="$OPTARG"
+        dbg ":::Set ci_name to $OPTARG" ;;
+      l) sn_url="$OPTARG" ;;
+      u) username="$OPTARG" ;;
+      p) password="$OPTARG" ;;
+      t) token="$OPTARG" ;;
+      o) timeout="$OPTARG" ;;
+      *)
+        echo "Invalid option: -$OPTARG" >&2
+        exit 1
+        ;;
     esac
   done
 
-  echo " DEBUG get_ci_sys_id(): $DEBUG"
-  echo " DEBUG_PASS get_ci_sys_id(): $DEBUG_PASS"
+  dbg " DEBUG get_ci_sys_id(): $DEBUG"
+  dbg " DEBUG_PASS get_ci_sys_id(): $DEBUG_PASS"
 
   # Debug output all passed parameters
-  echo "get_ci_sys_id(): TESTING FOR DEBUG STATUS. DEBUG=$DEBUG, DEBUG_PASS=$DEBUG_PASS"
+  dbg "get_ci_sys_id(): TESTING FOR DEBUG STATUS. DEBUG=$DEBUG, DEBUG_PASS=$DEBUG_PASS"
   if [[ "$DEBUG" == true ]]; then
-    echo "DEBUG get_ci_sys_id(): All passed parameters:"
-    echo " ci_name: $ci_name"
-    echo " sn_url: $sn_url"
-    echo " username: $username"
+    dbg "DEBUG get_ci_sys_id(): All passed parameters:"
+    dbg " ci_name: $ci_name"
+    dbg " sn_url: $sn_url"
+    dbg " username: $username"
     if [[ "$DEBUG_PASS" == true ]]; then
-      echo " password: $password"
+      dbg " password: $password"
     fi
-    echo " token: $token"
-    echo " timeout: $timeout"
-    echo " DEBUG: $DEBUG"
-    echo " DEBUG_PASS: $DEBUG_PASS"
+    dbg " token: $token"
+    dbg " timeout: $timeout"
+    dbg " DEBUG: $DEBUG"
+    dbg " DEBUG_PASS: $DEBUG_PASS"
   fi
 
   # validation steps
@@ -209,16 +219,16 @@ create_chg() {
 
   # Debug output all passed parameters
   if [[ "$DEBUG" == true ]]; then
-    echo "DEBUG create_chg(): All passed parameters:"
-    echo " json_payload: $json_payload"
-    echo " sn_url: $sn_url"
-    echo " username: $username"
+    dbg "DEBUG create_chg(): All passed parameters:"
+    dbg " json_payload: $json_payload"
+    dbg " sn_url: $sn_url"
+    dbg " username: $username"
     if [[ "$DEBUG_PASS" == true ]]; then
-      echo " password: $password"
+      dbg " password: $password"
     fi
-    echo " token: $token"
-    echo " DEBUG: $DEBUG"
-    echo " DEBUG_PASS: $DEBUG_PASS"
+    dbg " token: $token"
+    dbg " DEBUG: $DEBUG"
+    dbg " DEBUG_PASS: $DEBUG_PASS"
   fi
 
   # validate required parameters
@@ -298,22 +308,26 @@ main() {
     esac
   done
 
+  # set DEBUG and DEBUG_PASS as environment variables
+  export DEBUG
+  export DEBUG_PASS
+
   # debug output all passed parameters
   if [[ "$DEBUG" == true ]]; then
-    echo "DEBUG main(): All passed parameters:"
-    echo " ci_name: $ci_name"
-    echo " sn_url: $sn_url"
-    echo " description: $description"
-    echo " short_description: $short_description"
-    echo " username: $username"
+    dbg "DEBUG main(): All passed parameters:"
+    dbg " ci_name: $ci_name"
+    dbg " sn_url: $sn_url"
+    dbg " description: $description"
+    dbg " short_description: $short_description"
+    dbg " username: $username"
     if [[ "$DEBUG_PASS" == true ]]; then
-      echo " password: $password"
+      dbg " password: $password"
     fi
-    echo " token: $token"
-    echo " timeout: $timeout"
-    echo " response_type: $response_type"
-    echo " DEBUG: $DEBUG"
-    echo " DEBUG_PASS: $DEBUG_PASS"
+    dbg " token: $token"
+    dbg " timeout: $timeout"
+    dbg " response_type: $response_type"
+    dbg " DEBUG: $DEBUG"
+    dbg " DEBUG_PASS: $DEBUG_PASS"
   fi
 
   # VALIDATION STEPS
@@ -351,9 +365,9 @@ main() {
   fi
 
   # debug output function calls
-  echo ' DEBUG: main() >> get_ci_sys_id(): get_ci_sys_id -c "${ci_name}" -l "${sn_url}" -u "${username}" -p "${password}" -t "${token}"'
-  echo " DEBUG: main() >> get_ci_sys_id(): get_ci_sys_id -c ${ci_name} -l ${sn_url} -u ${username} -p ${password} -t ${token}"
-  ci_sys_id=$(get_ci_sys_id -c "${ci_name}" -l "${sn_url}" -u "${username}" -p "${password}" -t "${token}") # done
+  dbg ' DEBUG: main() >> get_ci_sys_id(): get_ci_sys_id -c "${ci_name}" -l "${sn_url}" -u "${username}" -p "${password}" -t "${token}"'
+  dbg " DEBUG: main() >> get_ci_sys_id(): get_ci_sys_id -c ${ci_name} -l ${sn_url} -u ${username} -p ${password} -t ${token}"
+  ci_sys_id=$(get_ci_sys_id -c "$ci_name" -l "${sn_url}" -u "${username}" -p "${password}" -t "${token}") # done
   json_payload=$(create_json_payload -c "${ci_sys_id}" -D "$DEBUG" -P "$DEBUG_PASS") # done
   create_chg -j "${json_payload}" -l "${sn_url}" -u "${username}" -p "${password}" -t "${token}" # done
 
