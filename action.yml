@@ -1,0 +1,79 @@
+name: create_snow_change
+description: Create ServiceNow CHG ticket
+author: bwhitehead0
+inputs:
+  # ! confirm these, copilot auto-generated the inputs
+  snow_url:
+    description: ServiceNow URL (e.g., https://my-company.service-now.com)
+    required: true
+  snow_user:
+    description: ServiceNow username (Username + password or token are required)
+    required: false
+  snow_password:
+    description: ServiceNow password (Username + password or token are required)
+    required: false
+  snow_token:
+    description: ServiceNow token (Username + password or token are required)
+    required: false
+  snow_ci:
+    description: ServiceNow CI (Configuration Item) name
+    required: true
+  # ? possible for future, add category. possible values: Accessory Application Computer Database Facility Mobile Device Network Printer Server Storage Other DevOps, maybe others? back end script should default to 'Application' for now
+  change_type:
+    description: Type of change (Normal, Emergency, Standard)
+    required: true
+  change_title:
+    description: 'Title of the change (ServiceNow field: short_description)'
+    required: true
+  change_description:
+    description: 'Description of the change (ServiceNow field: description)'
+    required: true
+  change_impact:
+    description: Impact of the change (High, Medium, Low)
+    required: true
+  change_risk:
+    description: Risk level of the change (High, Medium, Low)
+    required: true
+  # change_schedule_start:
+  #   # seems to follow format yyyy-MM-dd'T'HH:mm:ssZ?
+  #   # in script, set default to now + 30sec? in future, add to input from action and workflow_dispatch inputs?
+  #   description: Scheduled start date and time for the change (YYYY-MM-DD HH:mm:ss)
+  #   required: false
+  # change_schedule_end:
+  #   # seems to follow format yyyy-MM-dd'T'HH:mm:ssZ?
+  #   # in script, set default to now + 30sec? in future, add to input from action and workflow_dispatch inputs?
+  #   description: Scheduled end date and time for the change (YYYY-MM-DD HH:mm:ss)
+  #   required: false
+  change_assigned_to:
+    description: User to assign the change to (defaults to current GitHub user)
+    required: false
+    default: ${{ github.actor }}
+outputs:
+  # confirm the output value naming convention. individual output for CHG, sys_id, and full JSON response?
+  change_ticket_number:
+    description: The number of the created change ticket
+    value: ${{ steps.create_change.outputs.change_ticket_number }}
+  change_ticket_sys_id:
+    description: The sys_id of the created change ticket
+    value: ${{ steps.create_change.outputs.change_ticket_sys_id }}
+runs:
+  using: composite
+  steps:
+    - name: Create ServiceNow Change Ticket
+      id: create_change
+      # TODO: update param values, this was copied/pasted from docs for easy coverage of inputs
+      run: |
+        response=$(${{ github.action_path }}/assets/create_snow_change.sh \
+        -c : CI name \
+        -l : ServiceNow URL \
+        -d : Description \
+        -s : Short description \
+        -u : Username \
+        -p : Password \
+        -t : Token \
+        -o : Timeout (default: 60) \
+        -r : Response type (full or short, default: short)) \
+
+branding:
+  icon: "cloud-snow"
+  color: "orange"
