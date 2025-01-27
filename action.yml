@@ -86,8 +86,8 @@ runs:
         -p "${{ inputs.snow_password }}" \
         -t "${{ inputs.snow_token }}" \
         -o "${{ inputs.snow_timeout }}" \
-        -r "${{ inputs.response_type }}" \
-      
+        -r "${{ inputs.response_type }}")
+        
         echo "response=$response" >> $GITHUB_OUTPUT
       shell: bash
 
