@@ -16,6 +16,7 @@ inputs:
     description: ServiceNow token (Username + password or token are required)
     required: false
   snow_ci:
+    # ? set to not required and default to expecting a convention of variable set in the repo or org (or workflow)?
     description: ServiceNow CI (Configuration Item) name
     required: true
   # ? possible for future, add category. possible values: Accessory Application Computer Database Facility Mobile Device Network Printer Server Storage Other DevOps, maybe others? back end script should default to 'Application' for now
@@ -29,11 +30,13 @@ inputs:
     description: 'Description of the change (ServiceNow field: description)'
     required: true
   change_impact:
+    # TODO: implement in script
     description: Impact of the change (High, Medium, Low)
-    required: true
+    required: false
   change_risk:
+    # TODO: implement in script
     description: Risk level of the change (High, Medium, Low)
-    required: true
+    required: false
   # change_schedule_start:
   #   # seems to follow format yyyy-MM-dd'T'HH:mm:ssZ?
   #   # in script, set default to now + 30sec? in future, add to input from action and workflow_dispatch inputs?
@@ -45,9 +48,14 @@ inputs:
   #   description: Scheduled end date and time for the change (YYYY-MM-DD HH:mm:ss)
   #   required: false
   change_assigned_to:
+    # TODO: implement in script
     description: User to assign the change to (defaults to current GitHub user)
     required: false
     default: ${{ github.actor }}
+  snow_timeout:
+    description: "Timeout for ServiceNow API call (default: 60)"
+    required: false
+    default: 60
 outputs:
   # confirm the output value naming convention. individual output for CHG, sys_id, and full JSON response?
   change_ticket_number:
@@ -61,18 +69,20 @@ runs:
   steps:
     - name: Create ServiceNow Change Ticket
       id: create_change
-      # TODO: update param values, this was copied/pasted from docs for easy coverage of inputs
+      # TODO: add optional/TBD inputs
       run: |
         response=$(${{ github.action_path }}/assets/create_snow_change.sh \
-        -c : CI name \
-        -l : ServiceNow URL \
-        -d : Description \
-        -s : Short description \
-        -u : Username \
-        -p : Password \
-        -t : Token \
-        -o : Timeout (default: 60) \
-        -r : Response type (full or short, default: short)) \
+        -c "${{ inputs.snow_ci }}" \
+        -l "${{ inputs.snow_url }}" \
+        -d "${{ inputs.change_description }}" \
+        -s "${{ inputs.change_title }}" \
+        -u "${{ inputs.snow_user }}" \
+        -p "${{ inputs.snow_password }}" \
+        -t "${{ inputs.snow_token }}" \
+        -o "${{ inputs.snow_timeout }}" \
+        -r "${{ inputs.response_type }}" \
+      
+        echo "response=$response" >> $GITHUB_OUTPUT
 
 branding:
   icon: "cloud-snow"
