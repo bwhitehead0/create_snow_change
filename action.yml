@@ -38,6 +38,10 @@ inputs:
     # TODO: implement in script
     description: Risk level of the change (High, Medium, Low)
     required: false
+  debug:
+    description: Enable debug output
+    required: false
+    default: false
   # change_schedule_start:
   #   # seems to follow format yyyy-MM-dd'T'HH:mm:ssZ?
   #   # in script, set default to now + 30sec? in future, add to input from action and workflow_dispatch inputs?
@@ -86,8 +90,9 @@ runs:
         -p "${{ inputs.snow_password }}" \
         -t "${{ inputs.snow_token }}" \
         -o "${{ inputs.snow_timeout }}" \
-        -r "${{ inputs.response_type }}")
-        
+        -r "${{ inputs.response_type }}" \
+        -d "${{ inputs.debug }}")
+
         echo "response=$response" >> $GITHUB_OUTPUT
       shell: bash
 

@@ -313,7 +313,7 @@ main() {
   # TODO: update debug/debug_pass to accept true/false, not just a flag, for use with action.yml and users setting DEBUG at runtime
   # TODO: remove DEBUG_PASS entirely?
 
-  while getopts ":c:l:d:s:u:p:t:o:r:DP" opt; do
+  while getopts ":c:l:d:s:u:p:t:o:r:D:P" opt; do
     case "$opt" in
       c) ci_name="$OPTARG" ;;
       l) sn_url="$OPTARG" ;;
@@ -324,7 +324,7 @@ main() {
       t) token="$OPTARG" ;;
       o) timeout="$OPTARG" ;;
       r) response_type="$OPTARG" ;;
-      D) DEBUG=true ;;
+      D) DEBUG="$OPTARG" ;;
       P) DEBUG_PASS=true ;;
       :) err "Option -$OPTARG requires an argument."; exit 1 ;;
       ?) err "Invalid option: -$OPTARG"; exit 1 ;;
