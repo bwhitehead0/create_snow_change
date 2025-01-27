@@ -333,6 +333,8 @@ main() {
   done
 
   if [[ "$DEBUG" == "true" ]]; then
+    dbg "main(): set DEBUG to true"
+    err "main(): set DEBUG to true"
     DEBUG=true
   fi
 
