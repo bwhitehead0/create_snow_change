@@ -332,6 +332,10 @@ main() {
     esac
   done
 
+  if [[ "$DEBUG" == "true" ]]; then
+    DEBUG=true
+  fi
+
   # set DEBUG and DEBUG_PASS as environment variables
   export DEBUG
   export DEBUG_PASS
