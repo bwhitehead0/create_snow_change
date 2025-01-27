@@ -209,13 +209,14 @@ create_chg() {
   local password=""
   local token=""
 
-  while getopts "j:l:u:p:t:" opt; do
+  while getopts "j:l:u:p:t:r:" opt; do
     case "$opt" in
       j) json_payload="$OPTARG" ;;
       l) sn_url="$OPTARG" ;;
       u) username="$OPTARG" ;;
       p) password="$OPTARG" ;;
       t) token="$OPTARG" ;;
+      r) response_type="$OPTARG" ;;
       *) err "Invalid option: -$OPTARG"; exit 1 ;;
     esac
   done
@@ -242,6 +243,12 @@ create_chg() {
   # break up here so we can add logic around pieces of the API call as needed in the future
   local API_ENDPOINT="/api/sn_chg_rest/v1/change"
   local URL="${sn_url}${API_ENDPOINT}"
+  local SHORT_RESPONSE="?sysparm_fields=sys_id,number"
+
+  # filter response if response_type is 'short'
+  if [[ "$response_type" == "short" ]]; then
+    local URL="${sn_url}${API_ENDPOINT}${SHORT_RESPONSE}"
+  fi
 
   # if token is set use that, otherwise use username and password
   # if both are set, use token
@@ -301,6 +308,8 @@ main() {
   local response_type="short" # default response type
   DEBUG=false
   DEBUG_PASS=false
+  # TODO: update debug/debug_pass to accept true/false, not just a flag, for use with action.yml and users setting DEBUG at runtime
+  # TODO: remove DEBUG_PASS entirely?
 
   while getopts ":c:l:d:s:u:p:t:o:r:DP" opt; do
     case "$opt" in
@@ -326,20 +335,20 @@ main() {
   export DEBUG_PASS
 
   # debug output all passed parameters
-  dbg "main(): All passed parameters:"
-  dbg " ci_name: $ci_name"
-  dbg " sn_url: $sn_url"
-  dbg " description: $description"
-  dbg " short_description: $short_description"
-  dbg " username: $username"
-  if [[ "$DEBUG_PASS" == true ]]; then
-    dbg " password: $password"
-  fi
-  dbg " token: $token"
-  dbg " timeout: $timeout"
-  dbg " response_type: $response_type"
-  dbg " DEBUG: $DEBUG"
-  dbg " DEBUG_PASS: $DEBUG_PASS"
+    dbg "main(): All passed parameters:"
+    dbg " ci_name: $ci_name"
+    dbg " sn_url: $sn_url"
+    dbg " description: $description"
+    dbg " short_description: $short_description"
+    dbg " username: $username"
+    if [[ "$DEBUG_PASS" == true ]]; then
+      dbg " password: $password"
+    fi
+    dbg " token: $token"
+    dbg " timeout: $timeout"
+    dbg " response_type: $response_type"
+    dbg " DEBUG: $DEBUG"
+    dbg " DEBUG_PASS: $DEBUG_PASS"
 
 
   # VALIDATION STEPS
@@ -378,7 +387,7 @@ main() {
 
   ci_sys_id=$(get_ci_sys_id -c "$ci_name" -l "${sn_url}" -u "${username}" -p "${password}" -t "${token}") # done
   json_payload=$(create_json_payload -c "${ci_sys_id}" -d "${description}" -s "${short_description}") # done
-  create_chg -j "${json_payload}" -l "${sn_url}" -u "${username}" -p "${password}" -t "${token}" # done
+  create_chg -j "${json_payload}" -l "${sn_url}" -u "${username}" -p "${password}" -t "${token}" -r "${response_type}" # done
 
 }
 
