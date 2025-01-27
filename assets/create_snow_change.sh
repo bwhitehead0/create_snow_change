@@ -285,8 +285,7 @@ create_chg() {
     rm new_chg_response.json 2> /dev/null
   else
     err "Failed to create CHG. HTTP response code: $response"
-    err "Full response:"
-    err "$(cat new_chg_response.json)"
+    err "Full response: $(cat new_chg_response.json)"
     err "Submitted JSON payload: $json_payload"
     # clean up file quietly, error to /dev/null
     rm new_chg_response.json 2> /dev/null
