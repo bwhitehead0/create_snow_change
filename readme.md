@@ -1,6 +1,33 @@
 # create_snow_change Action
 
+## GitHub Action Use
 
+To use this action in your workflow, invoke like the following:
+
+```yaml
+name: Open New ServiceNow CHG
+
+on:
+  push:
+    tags:
+    - '*'
+
+jobs:
+  encode:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: URL Encode String
+        id: new_change
+        uses: bwhitehead0/create_snow_change@v1
+        with:
+          snow_url: "https://my_company.service-now.com"
+
+      - name: Show Encoded String
+        run: echo "Encoded string: ${{ steps.encode.outputs.encoded_string }}"
+```
 
 ## Action script documentation
 

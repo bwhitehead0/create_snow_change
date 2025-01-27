@@ -21,8 +21,9 @@ inputs:
     required: true
   # ? possible for future, add category. possible values: Accessory Application Computer Database Facility Mobile Device Network Printer Server Storage Other DevOps, maybe others? back end script should default to 'Application' for now
   change_type:
+    # TODO: implement in script
     description: Type of change (Normal, Emergency, Standard)
-    required: true
+    required: false
   change_title:
     description: 'Title of the change (ServiceNow field: short_description)'
     required: true
@@ -56,8 +57,13 @@ inputs:
     description: "Timeout for ServiceNow API call (default: 60)"
     required: false
     default: 60
+  response_type:
+    description: "Type of response to return (full, short)"
+    required: false
+    default: "short"
 outputs:
   # confirm the output value naming convention. individual output for CHG, sys_id, and full JSON response?
+  # TODO: update outputs in steps section to parse 'change_ticket_number' and 'change_ticket_sys_id' from 'response', and add 'response' output
   change_ticket_number:
     description: The number of the created change ticket
     value: ${{ steps.create_change.outputs.change_ticket_number }}
@@ -83,6 +89,7 @@ runs:
         -r "${{ inputs.response_type }}" \
       
         echo "response=$response" >> $GITHUB_OUTPUT
+      shell: bash
 
 branding:
   icon: "cloud-snow"
