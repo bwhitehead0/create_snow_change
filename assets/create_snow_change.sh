@@ -51,6 +51,13 @@ url_encode_string() {
     echo "$output"
 }
 
+token_auth() {
+  # parameters username, password, client_id, client_secret, oauth_URL
+  # returns bearer token
+  local OPTIND=1 # reset OPTIND so getopts starts at 1 and parameters are parsed correctly
+
+}
+
 # get sys_id
 get_ci_sys_id() {
   # needs: timeout, ci_name, sn_url, (username & password or token)
@@ -318,13 +325,16 @@ main() {
   local password=""
   local token=""
   local timeout="60" # default timeout value
-  # local response_type="short" # default response type
+  local oauth_endpoint="oauth_token.do"
+  local client_id=""
+  local client_secret=""
+  local BEARER_TOKEN=""
   DEBUG=false
   DEBUG_PASS=false
   # TODO: update debug/debug_pass to accept true/false, not just a flag, for use with action.yml and users setting DEBUG at runtime
   # TODO: remove DEBUG_PASS entirely?
 
-  while getopts ":c:l:d:s:u:p:t:o:r:D:P" opt; do
+  while getopts ":c:l:d:s:u:p:C:S:o:r:D:P" opt; do
     case "$opt" in
       c) ci_name="$OPTARG" ;;
       l) sn_url="$OPTARG" ;;
@@ -332,7 +342,8 @@ main() {
       s) short_description="$OPTARG" ;;
       u) username="$OPTARG" ;;
       p) password="$OPTARG" ;;
-      t) token="$OPTARG" ;;
+      C) client_id="$OPTARG" ;;
+      S) client_secret="$OPTARG" ;;
       o) timeout="$OPTARG" ;;
       # r) response_type="$OPTARG" ;;
       D) DEBUG="$OPTARG" ;;
@@ -343,11 +354,11 @@ main() {
     esac
   done
 
-  if [[ "$DEBUG" == "true" ]]; then
-    dbg "main(): set DEBUG to true"
-    err "main(): set DEBUG to true"
-    DEBUG=true
-  fi
+  # if [[ "$DEBUG" == "true" ]]; then
+  #   dbg "main(): set DEBUG to true"
+  #   err "main(): set DEBUG to true"
+  #   DEBUG=true
+  # fi
 
   # set DEBUG and DEBUG_PASS as environment variables
   export DEBUG
@@ -362,8 +373,9 @@ main() {
     dbg " username: $username"
     if [[ "$DEBUG_PASS" == true ]]; then
       dbg " password: $password"
+      dbg " client_id: $client_id"
+      dbg " client_secret: $client_secret"
     fi
-    dbg " token: $token"
     dbg " timeout: $timeout"
     # dbg " response_type: $response_type"
     dbg " DEBUG: $DEBUG"
@@ -384,18 +396,14 @@ main() {
   fi
 
   # check for required parameters
-  # double check this logic around user/pass/token
-  if [[ -z "$ci_name" || -z "$sn_url" || -z "$short_description" || ( -z "$username" && -z "$token" ) ]]; then
-    err "main(): Missing required parameters: ci_name, sn_url, short_description, and either username or token."
+  # double check this logic around user/pass/client_id/client_secret
+  if [[ -z "$ci_name" || -z "$sn_url" || -z "$short_description" || ( -z "$username" && -z "$password" ) || ( -z "$username" && -z "$password" && -z "$client_id" && -z "$client_secret" ) ]]; then
+    err "main(): Missing required parameters: ci_name, sn_url, short_description, and either Username and Password, or Username + Password + Client ID + Client Secret."
     exit 1
   fi
 
-  # convert response_type to lowercase and check if it is 'full' or 'short'
-  # response_type=$(echo "$response_type" | tr '[:upper:]' '[:lower:]')
-  # if [[ "$response_type" != "full" && "$response_type" != "short" ]]; then
-  #   dbg "Invalid response type. Use 'full' or 'short'. Defaulting to 'short'."
-  #   response_type="short"
-  # fi
+  # normalize sn_url. remove trailing slash if present
+  sn_url=$(echo "$sn_url" | sed 's/\/$//')
 
   # test if url is valid and reachable
   # do we need to add normalization here? ie, ensure https:// or http:// is present?
@@ -403,6 +411,19 @@ main() {
     err "Invalid or unreachable URL: $sn_url"
     exit 1
   fi
+
+  # if user, pass, client_id, and client_secret are set, build oauth URL and authenticate
+  # ! stopped here. finish out token_auth function, add error handling, missing logic if any, etc
+  # ! also need to update other function calls to pass bearer token (empty "" if not set here) and act appropriately with that value or empty string in the other functions that call API
+  if [[ -n "$username" && -n "$password" && -n "$client_id" && -n "$client_secret" ]]; then
+    dbg "main(): Using OAuth for authentication."
+    oauth_URL="${sn_url}/${oauth_endpoint}"
+    BEARER_TOKEN=$(token_auth -O "${oauth_URL}" -u "${username}" -p "${password}" -C "${client_id}" -S "${client_secret}" -o "${timeout}")
+    if [[ "$DEBUG_PASS" == true ]]; then
+      dbg "main(): BEARER_TOKEN: $BEARER_TOKEN"
+    fi
+  fi
+  
 
   ci_sys_id=$(get_ci_sys_id -c "$ci_name" -l "${sn_url}" -u "${username}" -p "${password}" -t "${token}") # done
   json_payload=$(create_json_payload -c "${ci_sys_id}" -d "${description}" -s "${short_description}") # done
