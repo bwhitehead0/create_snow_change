@@ -74,7 +74,7 @@ outputs:
   change_ticket_sys_id:
     description: The sys_id of the created change ticket
     value: ${{ steps.create_change.outputs.change_ticket_sys_id }}
-  respone:
+  response:
     description: The full JSON response from the ServiceNow API
     value: ${{ steps.create_change.outputs.response }}
 runs:
