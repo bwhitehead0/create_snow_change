@@ -91,7 +91,7 @@ runs:
         -t "${{ inputs.snow_token }}" \
         -o "${{ inputs.snow_timeout }}" \
         -r "${{ inputs.response_type }}" \
-        -d "${{ inputs.debug }}")
+        -D "${{ inputs.debug }}")
 
         echo "response=$response" >> $GITHUB_OUTPUT
       shell: bash
