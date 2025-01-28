@@ -93,7 +93,6 @@ runs:
         -p "${{ inputs.snow_password }}" \
         -t "${{ inputs.snow_token }}" \
         -o "${{ inputs.snow_timeout }}" \
-        -r "${{ inputs.response_type }}" \
         -D "${{ inputs.debug }}")
 
         echo "change_ticket_sys_id=$(echo $response | jq -r '.result.sys_id.value')" >> $GITHUB_OUTPUT
