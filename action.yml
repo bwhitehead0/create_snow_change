@@ -95,6 +95,11 @@ runs:
         -o "${{ inputs.snow_timeout }}" \
         -D "${{ inputs.debug }}")
 
+        if [ "${{ inputs.debug }}" = "true" ]; then
+          echo "change_ticket_sys_id=$(echo $response | jq -r '.result.sys_id.value')"
+          echo "change_ticket_number=$(echo $response | jq -r '.result.number.value')"
+        fi
+
         echo "change_ticket_sys_id=$(echo $response | jq -r '.result.sys_id.value')" >> $GITHUB_OUTPUT
         echo "change_ticket_number=$(echo $response | jq -r '.result.number.value')" >> $GITHUB_OUTPUT
         echo "response=$response" >> $GITHUB_OUTPUT
