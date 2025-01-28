@@ -19,15 +19,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: URL Encode String
+      - name: Create CHG Ticket
         id: new_change
-        uses: bwhitehead0/create_snow_change@v1
+        uses: bwhitehead0/create_snow_change@develop
         with:
           snow_url: "https://my_company.service-now.com"
-
-      - name: Show Encoded String
-        run: echo "Encoded string: ${{ steps.encode.outputs.encoded_string }}"
+          snow_user: "myUser"
+          snow_password: ${{ secrets.mySnowPass }}
+          snow_ci: "My CI Name"
+          change_title: "Deploying tag ${{ github.ref_name }}"
+          change_description: "Automated deployment for tag ${{ github.ref_name }}"
 ```
+
+Documentation references `@develop` branch in testing phase.
 
 ## Action script documentation
 
