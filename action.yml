@@ -61,10 +61,10 @@ inputs:
     description: "Timeout for ServiceNow API call (default: 60)"
     required: false
     default: 60
-  response_type:
-    description: "Type of response to return (full, short)"
-    required: false
-    default: "short"
+  # response_type:
+  #   description: "Type of response to return (full, short)"
+  #   required: false
+  #   default: "short"
 outputs:
   # confirm the output value naming convention. individual output for CHG, sys_id, and full JSON response?
   # TODO: update outputs in steps section to parse 'change_ticket_number' and 'change_ticket_sys_id' from 'response', and add 'response' output
@@ -74,6 +74,9 @@ outputs:
   change_ticket_sys_id:
     description: The sys_id of the created change ticket
     value: ${{ steps.create_change.outputs.change_ticket_sys_id }}
+  respone:
+    description: The full JSON response from the ServiceNow API
+    value: ${{ steps.create_change.outputs.response }}
 runs:
   using: composite
   steps:
@@ -93,7 +96,10 @@ runs:
         -r "${{ inputs.response_type }}" \
         -D "${{ inputs.debug }}")
 
+        echo "change_ticket_sys_id=$(echo $response | jq -r '.result.sys_id.value')" >> $GITHUB_OUTPUT
+        echo "change_ticket_number=$(echo $response | jq -r '.result.number.value')" >> $GITHUB_OUTPUT
         echo "response=$response" >> $GITHUB_OUTPUT
+
       shell: bash
 
 branding:

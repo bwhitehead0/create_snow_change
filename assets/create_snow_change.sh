@@ -133,6 +133,7 @@ get_ci_sys_id() {
   if [[ -n "$token" ]]; then
     dbg "get_ci_sys_id(): Using token for authentication."
     response=$(curl -k --request GET \
+      --connect-timeout "${timeout}" \
       --location \
       --url "${URL}" \
       --header "Authorization: Bearer ${token}" \
@@ -141,6 +142,7 @@ get_ci_sys_id() {
   else
     dbg "get_ci_sys_id(): Using username and password for authentication."
     response=$(curl -k --request GET \
+      --connect-timeout "${timeout}" \
       --location \
       --url "${URL}" \
       --user "${username}:${password}" \
@@ -208,15 +210,18 @@ create_chg() {
   local username=""
   local password=""
   local token=""
+  local timeout="" # should be set by incoming function call
+  # local response_type="" # should be set by incoming function call
 
-  while getopts "j:l:u:p:t:r:" opt; do
+  while getopts "j:l:u:p:t:o:r:" opt; do
     case "$opt" in
       j) json_payload="$OPTARG" ;;
       l) sn_url="$OPTARG" ;;
       u) username="$OPTARG" ;;
       p) password="$OPTARG" ;;
       t) token="$OPTARG" ;;
-      r) response_type="$OPTARG" ;;
+      o) timeout="$OPTARG" ;;
+      # r) response_type="$OPTARG" ;;
       *) err "Invalid option: -$OPTARG"; exit 1 ;;
     esac
   done
@@ -230,6 +235,8 @@ create_chg() {
     dbg " password: $password"
   fi
   dbg " token: $token"
+  dbg " timeout: $timeout"
+  # dbg " response_type: $response_type"
   dbg " DEBUG: $DEBUG"
   dbg " DEBUG_PASS: $DEBUG_PASS"
 
@@ -243,12 +250,12 @@ create_chg() {
   # break up here so we can add logic around pieces of the API call as needed in the future
   local API_ENDPOINT="/api/sn_chg_rest/v1/change"
   local URL="${sn_url}${API_ENDPOINT}"
-  local SHORT_RESPONSE="?sysparm_fields=sys_id,number"
+  # local SHORT_RESPONSE="?sysparm_fields=sys_id,number"
 
   # filter response if response_type is 'short'
-  if [[ "$response_type" == "short" ]]; then
-    local URL="${sn_url}${API_ENDPOINT}${SHORT_RESPONSE}"
-  fi
+  # if [[ "$response_type" == "short" ]]; then
+  #   local URL="${sn_url}${API_ENDPOINT}${SHORT_RESPONSE}"
+  # fi
 
   # if token is set use that, otherwise use username and password
   # if both are set, use token
@@ -256,6 +263,7 @@ create_chg() {
   if [[ -n "$token" ]]; then
     dbg "create_chg(): Using token for authentication."
     response=$(curl -k --request POST \
+      --connect-timeout "${timeout}" \
       --location \
       --url "${URL}" \
       --header "Authorization: Bearer ${token}" \
@@ -266,6 +274,7 @@ create_chg() {
   else
     dbg "create_chg(): Using username and password for authentication."
     response=$(curl -k --request POST \
+      --connect-timeout "${timeout}" \
       --location \
       --url "${URL}" \
       --user "${username}:${password}" \
@@ -277,6 +286,9 @@ create_chg() {
 
   #### ! temporary set response to 400
   # response=400
+  # debug output
+  dbg "API response: $(cat new_chg_response.json)"
+  dbg "Submitted JSON payload: $json_payload"
 
   # check if response is 2xx
   if [[ "$response" =~ ^2 ]]; then
@@ -285,8 +297,6 @@ create_chg() {
     rm new_chg_response.json 2> /dev/null
   else
     err "Failed to create CHG. HTTP response code: $response"
-    err "Full response: $(cat new_chg_response.json)"
-    err "Submitted JSON payload: $json_payload"
     # clean up file quietly, error to /dev/null
     rm new_chg_response.json 2> /dev/null
     exit 1
@@ -296,6 +306,7 @@ create_chg() {
 # primary function to grab all passed parameters and call other functions
 main() {
   # ! data such as tag, environment, etc should all exist outside of this script. any references passed in should be validated in the workflow, and addressed in description/short_description only.
+  # ! -r not working - likely an issue with the 'sysparm_fields' parameter in the API call
   dbg "main(): All passed parameters (\$*): $*"
 
   local ci_name=""
@@ -307,7 +318,7 @@ main() {
   local password=""
   local token=""
   local timeout="60" # default timeout value
-  local response_type="short" # default response type
+  # local response_type="short" # default response type
   DEBUG=false
   DEBUG_PASS=false
   # TODO: update debug/debug_pass to accept true/false, not just a flag, for use with action.yml and users setting DEBUG at runtime
@@ -323,7 +334,7 @@ main() {
       p) password="$OPTARG" ;;
       t) token="$OPTARG" ;;
       o) timeout="$OPTARG" ;;
-      r) response_type="$OPTARG" ;;
+      # r) response_type="$OPTARG" ;;
       D) DEBUG="$OPTARG" ;;
       P) DEBUG_PASS=true ;;
       :) err "Option -$OPTARG requires an argument."; exit 1 ;;
@@ -354,7 +365,7 @@ main() {
     fi
     dbg " token: $token"
     dbg " timeout: $timeout"
-    dbg " response_type: $response_type"
+    # dbg " response_type: $response_type"
     dbg " DEBUG: $DEBUG"
     dbg " DEBUG_PASS: $DEBUG_PASS"
 
@@ -380,11 +391,11 @@ main() {
   fi
 
   # convert response_type to lowercase and check if it is 'full' or 'short'
-  response_type=$(echo "$response_type" | tr '[:upper:]' '[:lower:]')
-  if [[ "$response_type" != "full" && "$response_type" != "short" ]]; then
-    dbg "Invalid response type. Use 'full' or 'short'. Defaulting to 'short'."
-    response_type="short"
-  fi
+  # response_type=$(echo "$response_type" | tr '[:upper:]' '[:lower:]')
+  # if [[ "$response_type" != "full" && "$response_type" != "short" ]]; then
+  #   dbg "Invalid response type. Use 'full' or 'short'. Defaulting to 'short'."
+  #   response_type="short"
+  # fi
 
   # test if url is valid and reachable
   # do we need to add normalization here? ie, ensure https:// or http:// is present?
@@ -395,7 +406,7 @@ main() {
 
   ci_sys_id=$(get_ci_sys_id -c "$ci_name" -l "${sn_url}" -u "${username}" -p "${password}" -t "${token}") # done
   json_payload=$(create_json_payload -c "${ci_sys_id}" -d "${description}" -s "${short_description}") # done
-  create_chg -j "${json_payload}" -l "${sn_url}" -u "${username}" -p "${password}" -t "${token}" -r "${response_type}" # done
+  create_chg -j "${json_payload}" -l "${sn_url}" -u "${username}" -p "${password}" -o "${timeout}" -t "${token}" # done
 
 }
 
