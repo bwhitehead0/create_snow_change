@@ -54,7 +54,69 @@ url_encode_string() {
 token_auth() {
   # parameters username, password, client_id, client_secret, oauth_URL
   # returns bearer token
+  # called with: token_auth -O "${oauth_URL}" -u "${username}" -p "${password}" -C "${client_id}" -S "${client_secret}" -o "${timeout}" # optional -g "${grant_type}"
   local OPTIND=1 # reset OPTIND so getopts starts at 1 and parameters are parsed correctly
+
+  local username=""
+  local password=""
+  local client_id=""
+  local client_secret=""
+  local oauth_URL=""
+  local timeout="60"
+  local response=""
+  local bearer_token=""
+  local grant_type="password" # optional passed parameter, default to password, unlikely to need anything else set
+
+  # parse arguments. use substitution to set grant_type default to 'password'
+  while getopts ":u:p:C:S:O:o:g:" arg; do
+    case "${arg}" in
+      u) username="${OPTARG}" ;;
+      p) password="${OPTARG}" ;;
+      C) client_id="${OPTARG}" ;;
+      S) client_secret="${OPTARG}" ;;
+      O) oauth_URL="${OPTARG}" ;;
+      o) timeout="${OPTARG}" ;;
+      g) grant_type="${OPTARG}" ;;
+      *)
+        err "Invalid option: -$OPTARG"
+        exit 1
+        ;;
+    esac
+  done
+
+  # ensure required parameters are set
+  if [[ -z "$username" || -z "$password" || -z "$client_id" || -z "$client_secret" || -z "$oauth_URL" ]]; then
+    err "token_auth(): Missing required parameters: username, password, client_id, client_secret, and oauth_URL."
+    exit 1
+  fi
+
+  # get bearer token
+  # save HTTP response code to variable 'code', API response to variable 'body'
+  # https://superuser.com/a/1321274
+  curl -s -w "\n%{http_code}" -X POST -d "grant_type=$grant_type" -d "username=$username" -d "password=$password" -d "client_id=$client_id" -d "client_secret=$client_secret" "$oauth_URL" | {
+    read -r body
+    read -r code
+  }
+
+  dbg "token_auth(): HTTP code: $code"
+  if [[ -z "$DEBUG_PASS" ]]; then
+    dbg "token_auth(): Token auth response: $body"
+  fi
+
+  # check if response is 2xx
+  if [[ "$code" =~ ^2 ]]; then
+    # HTTP 2xx returned, successful API call. get bearer token and clean up
+    bearer_token=$(echo "$body" | jq -r '.access_token')
+    if [[ -z "$DEBUG_PASS" ]]; then
+      dbg "token_auth(): Bearer token: $bearer_token"
+    fi
+    # return bearer token
+    echo "$bearer_token"
+  else
+    err "Token authentication failed. HTTP response code: $code"
+    dbg "Token auth response: $body"
+    exit 1
+  fi
 
 }
 
@@ -62,11 +124,12 @@ token_auth() {
 get_ci_sys_id() {
   # needs: timeout, ci_name, sn_url, (username & password or token)
   # ${sn_url}/api/now/table/cmdb_ci_service_discovered?sysparm_fields=name,sys_id&timeout=${timeout}&sysparm_query=name=${encoded_ci_name}
+  # TODO: update curl commands to not use intermediate files for data and use variables for http response and body like in token_auth()
   local OPTIND=1 # reset OPTIND so getopts starts at 1 and parameters are parsed correctly
   
   local ci_name=""
   local encoded_ci_name=""
-  local timeout="60"
+  local timeout=""
   local sn_url=""
   local username=""
   local password=""
@@ -98,15 +161,14 @@ get_ci_sys_id() {
   dbg " username: $username"
   if [[ "$DEBUG_PASS" == true ]]; then
     dbg " password: $password"
+    dbg " token: $token"
   fi
-  dbg " token: $token"
   dbg " timeout: $timeout"
   dbg " DEBUG: $DEBUG"
   dbg " DEBUG_PASS: $DEBUG_PASS"
 
   # validation steps
   # check for required parameters
-  # double check this logic around user/pass/token
   if [[ -z "$ci_name" ]]; then
     err "get_ci_sys_id(): Missing required parameter: ci_name."
     exit 1
@@ -117,8 +179,8 @@ get_ci_sys_id() {
     exit 1
   fi
 
-  if [[ -z "$username" && -z "$token" ]]; then
-    err "get_ci_sys_id(): Missing required parameter: either username or token."
+  if [[ ( -z "$username" && -z "$password" ) || -z "$token" ]]; then
+    err "get_ci_sys_id(): Missing required parameter: either username + password or token."
     exit 1
   fi
 
@@ -210,6 +272,7 @@ create_json_payload() {
 # create change request
 create_chg() {
   # needs: json_payload, sn_url, (username & password or token)
+  # TODO: update curl commands to not use intermediate files for data and use variables for http response and body like in token_auth()
   local OPTIND=1 # reset OPTIND so getopts starts at 1 and parameters are parsed correctly
   
   local json_payload=""
@@ -218,7 +281,6 @@ create_chg() {
   local password=""
   local token=""
   local timeout="" # should be set by incoming function call
-  # local response_type="" # should be set by incoming function call
 
   while getopts "j:l:u:p:t:o:r:" opt; do
     case "$opt" in
@@ -228,7 +290,6 @@ create_chg() {
       p) password="$OPTARG" ;;
       t) token="$OPTARG" ;;
       o) timeout="$OPTARG" ;;
-      # r) response_type="$OPTARG" ;;
       *) err "Invalid option: -$OPTARG"; exit 1 ;;
     esac
   done
@@ -240,16 +301,25 @@ create_chg() {
   dbg " username: $username"
   if [[ "$DEBUG_PASS" == true ]]; then
     dbg " password: $password"
+    dbg " token: $token"
   fi
-  dbg " token: $token"
   dbg " timeout: $timeout"
-  # dbg " response_type: $response_type"
   dbg " DEBUG: $DEBUG"
   dbg " DEBUG_PASS: $DEBUG_PASS"
 
   # validate required parameters
-  if [[ -z "$json_payload" || -z "$sn_url" || (-z "$username" && -z "$token") ]]; then
-    err "create_chg(): Missing required parameters: json_payload, sn_url, and either username or token."
+  if [[ -z "$json_payload" ]]; then
+    err "create_chg(): Missing required parameter: json_payload (-j)"
+    exit 1
+  fi
+
+  if [[ -z "$sn_url" ]]; then
+    err "create_chg(): Missing required parameter: sn_url (-l)"
+    exit 1
+  fi
+
+  if [[ ( -z "$username" && -z "$password" ) || -z "$token" ]]; then
+    err "create_chg(): Missing required parameter: either username + password or token."
     exit 1
   fi
 
@@ -257,12 +327,7 @@ create_chg() {
   # break up here so we can add logic around pieces of the API call as needed in the future
   local API_ENDPOINT="/api/sn_chg_rest/v1/change"
   local URL="${sn_url}${API_ENDPOINT}"
-  # local SHORT_RESPONSE="?sysparm_fields=sys_id,number"
 
-  # filter response if response_type is 'short'
-  # if [[ "$response_type" == "short" ]]; then
-  #   local URL="${sn_url}${API_ENDPOINT}${SHORT_RESPONSE}"
-  # fi
 
   # if token is set use that, otherwise use username and password
   # if both are set, use token
@@ -291,8 +356,6 @@ create_chg() {
       --silent -w "%{http_code}" -o new_chg_response.json)
   fi
 
-  #### ! temporary set response to 400
-  # response=400
   # debug output
   dbg "API response: $(cat new_chg_response.json)"
   dbg "Submitted JSON payload: $json_payload"
@@ -331,7 +394,7 @@ main() {
   local BEARER_TOKEN=""
   DEBUG=false
   DEBUG_PASS=false
-  # TODO: update debug/debug_pass to accept true/false, not just a flag, for use with action.yml and users setting DEBUG at runtime
+  # ? DONE: (debug, not debug_pass). TODO: update debug/debug_pass to accept true/false, not just a flag, for use with action.yml and users setting DEBUG at runtime
   # TODO: remove DEBUG_PASS entirely?
 
   while getopts ":c:l:d:s:u:p:C:S:o:r:D:P" opt; do
@@ -354,12 +417,6 @@ main() {
     esac
   done
 
-  # if [[ "$DEBUG" == "true" ]]; then
-  #   dbg "main(): set DEBUG to true"
-  #   err "main(): set DEBUG to true"
-  #   DEBUG=true
-  # fi
-
   # set DEBUG and DEBUG_PASS as environment variables
   export DEBUG
   export DEBUG_PASS
@@ -377,22 +434,24 @@ main() {
       dbg " client_secret: $client_secret"
     fi
     dbg " timeout: $timeout"
-    # dbg " response_type: $response_type"
     dbg " DEBUG: $DEBUG"
     dbg " DEBUG_PASS: $DEBUG_PASS"
 
 
   # VALIDATION STEPS
   # check if jq and curl are installed
-  # ? add version output if installed? especially for curl since there may be argument changes for older versions
   if ! check_application_installed jq; then
     err "jq not available, aborting."
     exit 1
+  else
+    dbg "main(): jq version: $(jq --version)"
   fi
 
   if ! check_application_installed curl; then
     err "curl not available, aborting."
     exit 1
+  else
+    dbg "main(): curl version: $(curl --version | head -n 1)"
   fi
 
   # check for required parameters
@@ -413,11 +472,9 @@ main() {
   fi
 
   # if user, pass, client_id, and client_secret are set, build oauth URL and authenticate
-  # ! stopped here. finish out token_auth function, add error handling, missing logic if any, etc
-  # ! also need to update other function calls to pass bearer token (empty "" if not set here) and act appropriately with that value or empty string in the other functions that call API
   if [[ -n "$username" && -n "$password" && -n "$client_id" && -n "$client_secret" ]]; then
-    dbg "main(): Using OAuth for authentication."
     oauth_URL="${sn_url}/${oauth_endpoint}"
+    dbg "main(): Using OAuth for authentication: ${oauth_URL}"
     BEARER_TOKEN=$(token_auth -O "${oauth_URL}" -u "${username}" -p "${password}" -C "${client_id}" -S "${client_secret}" -o "${timeout}")
     if [[ "$DEBUG_PASS" == true ]]; then
       dbg "main(): BEARER_TOKEN: $BEARER_TOKEN"
@@ -425,9 +482,9 @@ main() {
   fi
   
 
-  ci_sys_id=$(get_ci_sys_id -c "$ci_name" -l "${sn_url}" -u "${username}" -p "${password}" -t "${token}") # done
+  ci_sys_id=$(get_ci_sys_id -c "$ci_name" -l "${sn_url}" -u "${username}" -p "${password}" -t "${BEARER_TOKEN}") # done
   json_payload=$(create_json_payload -c "${ci_sys_id}" -d "${description}" -s "${short_description}") # done
-  create_chg -j "${json_payload}" -l "${sn_url}" -u "${username}" -p "${password}" -o "${timeout}" -t "${token}" # done
+  create_chg -j "${json_payload}" -l "${sn_url}" -u "${username}" -p "${password}" -o "${timeout}" -t "${BEARER_TOKEN}" # done
 
 }
 
