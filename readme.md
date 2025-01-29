@@ -26,6 +26,8 @@ jobs:
           snow_url: "https://my_company.service-now.com"
           snow_user: "myUser"
           snow_password: ${{ secrets.mySnowPass }}
+          snow_client_id: ${{ secrets.mySnowClientId }}
+          snow_client_secret: ${{ secrets.mySnowClientSecret }}
           snow_ci: "My CI Name"
           change_title: "Deploying tag ${{ github.ref_name }}"
           change_description: "Automated deployment for tag ${{ github.ref_name }}"
