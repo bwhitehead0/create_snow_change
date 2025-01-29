@@ -84,6 +84,19 @@ token_auth() {
     esac
   done
 
+  # debug output all passed parameters
+  dbg "token_auth(): All passed parameters:"
+  dbg " username: $username"
+  if [[ "$DEBUG_PASS" == true ]]; then
+    dbg " password: $password"
+    dbg " client_id: $client_id"
+    dbg " client_secret: $client_secret"
+  fi
+  dbg " oauth_URL: $oauth_URL"
+  dbg " timeout: $timeout"
+  dbg " grant_type: $grant_type"
+
+
   # ensure required parameters are set
   if [[ -z "$username" || -z "$password" || -z "$client_id" || -z "$client_secret" || -z "$oauth_URL" ]]; then
     err "token_auth(): Missing required parameters: username, password, client_id, client_secret, and oauth_URL."
@@ -93,10 +106,14 @@ token_auth() {
   # get bearer token
   # save HTTP response code to variable 'code', API response to variable 'body'
   # https://superuser.com/a/1321274
-  curl -s -w "\n%{http_code}" -X POST -d "grant_type=$grant_type" -d "username=$username" -d "password=$password" -d "client_id=$client_id" -d "client_secret=$client_secret" "$oauth_URL" | {
-    read -r body
-    read -r code
-  }
+  dbg "token_auth(): Attempting to authenticate with OAuth."
+  response=$(curl -s -k --location -w "\n%{http_code}" -X POST -d "grant_type=$grant_type" -d "username=$username" -d "password=$password" -d "client_id=$client_id" -d "client_secret=$client_secret" "$oauth_URL")
+  body=$(echo "$response" | sed '$d')
+  code=$(echo "$response" | tail -n1)
+  # curl -s -w -k  --location "\n%{http_code}" -X POST -d "grant_type=$grant_type" -d "username=$username" -d "password=$password" -d "client_id=$client_id" -d "client_secret=$client_secret" "$oauth_URL" | {
+  #   read -r body
+  #   read -r code
+  # }
 
   dbg "token_auth(): HTTP code: $code"
   if [[ -z "$DEBUG_PASS" ]]; then
@@ -129,7 +146,7 @@ get_ci_sys_id() {
   
   local ci_name=""
   local encoded_ci_name=""
-  local timeout=""
+  local timeout="60"
   local sn_url=""
   local username=""
   local password=""
@@ -280,7 +297,7 @@ create_chg() {
   local username=""
   local password=""
   local token=""
-  local timeout="" # should be set by incoming function call
+  local timeout="60"
 
   while getopts "j:l:u:p:t:o:r:" opt; do
     case "$opt" in
@@ -467,7 +484,7 @@ main() {
   # test if url is valid and reachable
   # do we need to add normalization here? ie, ensure https:// or http:// is present?
   if ! curl -Lk -s -w "%{http_code}" "$sn_url" -o /dev/null | grep "200" > /dev/null; then
-    err "Invalid or unreachable URL: $sn_url"
+    err "main(): Invalid or unreachable URL: $sn_url"
     exit 1
   fi
 
