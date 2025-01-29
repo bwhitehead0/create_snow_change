@@ -8,12 +8,15 @@ inputs:
     required: true
   snow_user:
     description: ServiceNow username (Username + password or token are required)
-    required: false
+    required: true
   snow_password:
     description: ServiceNow password (Username + password or token are required)
+    required: true
+  snow_client_id:
+    description: "ServiceNow Client ID for oAuth Token auth (Required: User + pass + client ID + client secret)"
     required: false
-  snow_token:
-    description: ServiceNow token (Username + password or token are required)
+  snow_client_secret:
+    description: "ServiceNow Client Secret for oAuth Token auth (Required: User + pass + client ID + client secret)"
     required: false
   snow_ci:
     # ? set to not required and default to expecting a convention of variable set in the repo or org (or workflow)?
@@ -93,6 +96,8 @@ runs:
         -p "${{ inputs.snow_password }}" \
         -t "${{ inputs.snow_token }}" \
         -o "${{ inputs.snow_timeout }}" \
+        -C "${{ inputs.snow_client_id }}" \
+        -S "${{ inputs.snow_client_secret }}" \
         -D "${{ inputs.debug }}")
 
         if [ "${{ inputs.debug }}" = "true" ]; then
