@@ -94,7 +94,6 @@ runs:
         -s "${{ inputs.change_title }}" \
         -u "${{ inputs.snow_user }}" \
         -p "${{ inputs.snow_password }}" \
-        -t "${{ inputs.snow_token }}" \
         -o "${{ inputs.snow_timeout }}" \
         -C "${{ inputs.snow_client_id }}" \
         -S "${{ inputs.snow_client_secret }}" \
