@@ -403,7 +403,7 @@ main() {
   local short_description=""
   local username=""
   local password=""
-  local token=""
+  # local token="" # need to remove in next update, replaced by BEARER_TOKEN for clarity
   local timeout="60" # default timeout value
   local oauth_endpoint="oauth_token.do"
   local client_id=""
@@ -416,18 +416,17 @@ main() {
 
   while getopts ":c:l:d:s:u:p:C:S:o:r:D:P" opt; do
     case "$opt" in
-      c) ci_name="$OPTARG" ;;
-      l) sn_url="$OPTARG" ;;
-      d) description="$OPTARG" ;;
-      s) short_description="$OPTARG" ;;
       u) username="$OPTARG" ;;
       p) password="$OPTARG" ;;
       C) client_id="$OPTARG" ;;
       S) client_secret="$OPTARG" ;;
+      c) ci_name="$OPTARG" ;;
+      l) sn_url="$OPTARG" ;;
       o) timeout="$OPTARG" ;;
-      # r) response_type="$OPTARG" ;;
       D) DEBUG="$OPTARG" ;;
       P) DEBUG_PASS=true ;;
+      d) description="$OPTARG" ;;
+      s) short_description="$OPTARG" ;;
       :) err "Option -$OPTARG requires an argument."; exit 1 ;;
       ?) err "Invalid option: -$OPTARG"; exit 1 ;;
       *) err "Invalid option: -$OPTARG"; exit 1 ;;
@@ -472,7 +471,6 @@ main() {
   fi
 
   # check for required parameters
-  # double check this logic around user/pass/client_id/client_secret
   if [[ -z "$ci_name" || -z "$sn_url" || -z "$short_description" || ( -z "$username" && -z "$password" ) || ( -z "$username" && -z "$password" && -z "$client_id" && -z "$client_secret" ) ]]; then
     err "main(): Missing required parameters: ci_name, sn_url, short_description, and either Username and Password, or Username + Password + Client ID + Client Secret."
     exit 1
