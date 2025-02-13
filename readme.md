@@ -85,7 +85,7 @@ jobs:
 
       - name: Create CHG Ticket
         id: new_change
-        uses: bwhitehead0/create_snow_change@main
+        uses: bwhitehead0/create_snow_change@v1
         with:
           snow_url: ${{ env.SN_URL }}
           snow_user: ${{ secrets.mySnowUser }}
@@ -113,7 +113,7 @@ jobs:
           echo "WORKNOTES_SINGLELINE=$WORKFLOW_STEP_MESSAGE$GITHUB_USER$GITHUB_REPOSITORY$CHANGE_TICKET$DEPLOYMENT_TAG$DEPLOYMENT_ENV$GITHUB_RUN_ID$USER_COMMENT$GITHUB_ACTIONS_URL" >> $GITHUB_ENV
 
       - name: Update CHG
-        uses: bwhitehead0/update_snow_change@main
+        uses: bwhitehead0/update_snow_change@v1
         with: 
           snow_url: ${{ env.SN_URL }}
           snow_user: ${{ secrets.mySnowUser }}
@@ -149,7 +149,7 @@ jobs:
           echo "WORKNOTES_SINGLELINE=$WORKFLOW_STEP_MESSAGE$GITHUB_USER$GITHUB_REPOSITORY$CHANGE_TICKET$DEPLOYMENT_TAG$DEPLOYMENT_ENV$GITHUB_RUN_ID$USER_COMMENT$GITHUB_ACTIONS_URL" >> $GITHUB_ENV
       
       - name: Update CHG post-deployment
-        uses: bwhitehead0/update_snow_change@main
+        uses: bwhitehead0/update_snow_change@v1
         with: 
           snow_url: ${{ env.SN_URL }}
           snow_user: ${{ secrets.mySnowUser }}
@@ -161,7 +161,7 @@ jobs:
       
       - name: Get CHG Ticket Details
         id: change_detail
-        uses: bwhitehead0/get_snow_change@main
+        uses: bwhitehead0/get_snow_change@v1
         with:
           snow_url: ${{ env.SN_URL }}
           snow_user: ${{ secrets.mySnowUser }}
@@ -198,7 +198,7 @@ jobs:
           echo "close_code=$close_code" >> $GITHUB_ENV
 
       - name: Set CHG ticket to review
-        uses: bwhitehead0/update_snow_change@main
+        uses: bwhitehead0/update_snow_change@v1
         with: 
           snow_url: ${{ env.SN_URL }}
           snow_user: ${{ secrets.mySnowUser }}
@@ -209,7 +209,7 @@ jobs:
           snow_change_state: 0
 
       - name: Close CHG ticket
-        uses: bwhitehead0/update_snow_change@main
+        uses: bwhitehead0/update_snow_change@v1
         with: 
           snow_url: ${{ env.SN_URL }}
           snow_user: ${{ secrets.mySnowUser }}
