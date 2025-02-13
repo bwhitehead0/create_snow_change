@@ -21,7 +21,7 @@ jobs:
 
       - name: Create CHG Ticket
         id: new_change
-        uses: bwhitehead0/create_snow_change@develop
+        uses: bwhitehead0/create_snow_change@v1
         with:
           snow_url: "https://my_company.service-now.com"
           snow_user: "myUser"
@@ -32,110 +32,192 @@ jobs:
           change_title: "Deploying tag ${{ github.ref_name }}"
           change_description: "Automated deployment for tag ${{ github.ref_name }}"
 ```
+### Inputs
 
-Documentation references `@develop` branch in testing phase.
+* `snow_url`: ServiceNow URL (e.g., https://my-company.service-now.com). **Required**.
+* `snow_user`: ServiceNow username (Username + password or token are required). **Required**.
+* `snow_password`: ServiceNow password (Username + password or token are required). **Required**.
+* `snow_client_id`: ServiceNow Client ID for oAuth Token auth. **Optional** (Requires: User + pass + client ID + client secret).
+* `snow_client_secret`: ServiceNow Client Secret for oAuth Token auth. **Optional** (Requires: User + pass + client ID + client secret).
+* `snow_ci`: ServiceNow CI (Configuration Item) name. **Required**.
+* `change_title`: Title of the change (ServiceNow field: short_description). **Required**.
+* `change_description`: Description of the change (ServiceNow field: description). **Required**.
+* `debug`: Enable debug output. **Optional**.
+* `snow_timeout`: Timeout for ServiceNow API call. **Optional**, default='60'.
 
-## Action script documentation
+### Outputs
 
-### Flow Diagram for `assets/create_snow_change.sh`
+* `change_ticket_number`: The created change ticket number.
+* `change_ticket_sys_id`: The sys_id of the created change ticket.
+* `response`: The full JSON response from the ServiceNow API.
 
-1. Start
-  - Usage: `./create_snow_change.sh [options]`
-  - Options:
-    - `-c` : CI name
-    - `-l` : ServiceNow URL
-    - `-d` : Description
-    - `-s` : Short description
-    - `-u` : Username
-    - `-p` : Password
-    - `-t` : Token
-    - `-o` : Timeout (default: 60)
-    - `-r` : Response type (full or short, default: short)
-2. Validate Arguments and Environment
-  - Check if required arguments are provided
-  - Check if `jq` and `curl` are installed
-  - Validate URL
-  - Display error message if arguments are invalid
-3. Execute Main Function
-  - Call `get_ci_sys_id` to get the CI sys_id
-  - Call `create_json_payload` to create the JSON payload
-  - Call `create_chg` to create the change request
+## Example with other ServiceNow CHG actions
 
-### Functions
+Your ticket workflow requirements may vary, but this example creates a new CHG ticket, updates the ticket to start a deployment, does some dummy deployment activity, updates the ticket notes, and moves the ticket towards closure, eventually closing the ticket with close notes.
 
-1. main()
-  - Usage: `main "$@"`
-  - Description: Main function to parse arguments, validate them, and call other functions
-  - Steps:
-    - Parse arguments
-    - Validate required parameters and applications
-    - Get the CI sys_id
-    - Create the JSON payload
-    - Create the change request
+> **⚠️ Note:** Due both to the limitations of GitHub Actions inputs, as well as the nature of the JSON payload sent to the ServiceNow API, constructing multiline values for fields that accept multiline input, such as `work_notes`, `close_notes`, etc, for now it is recommended to build the string in its own step using variables for human readability and clarity, and then concatenate them when writing either to `$GITHUB_ENV` or `$GITHUB_OUTPUT`. Examples of this are found in the below workflow steps named `Create work_notes message` and `Create post-deploy work_notes message`.
 
-2. url_encode_string()
-  - Usage: `url_encode_string "string"`
-  - Description: URL encodes the provided string
+```yaml
+name: Example CD workflow
 
-3. get_ci_sys_id()
-  - Usage: `get_ci_sys_id -c "ci_name" -l "sn_url" -u "username" -p "password" -t "token" -o "timeout"`
-  - Description: Retrieves the sys_id of the specified CI
-  - Steps:
-    - Parse arguments
-    - Validate required parameters
-    - URL encode the CI name
-    - Build the API URL
-    - Make the API request to get the sys_id
-    - Handle the response and extract the sys_id
+on:
+  push:
+    tags:
+    - '*'
+env:
+  SN_CI: "My CI"
+  SN_URL: "https://my_company.service-now.com"
+  ENV: "QAT"
 
-4. create_json_payload()
-  - Usage: `create_json_payload -c "ci_sys_id" -d "description" -s "short_description"`
-  - Description: Creates a JSON payload for the change request
-  - Steps:
-    - Parse arguments
-    - Create the JSON payload
-    - Validate the JSON payload
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Get workflow job ID
+        # for use with full link to workflow run in SN ticket notes
+        id: job_id
+        uses: bwhitehead0/get_job_id@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-5. create_chg()
-  - Usage: `create_chg -j "json_payload" -l "sn_url" -u "username" -p "password" -t "token"`
-  - Description: Creates a change request in ServiceNow
-  - Steps:
-    - Parse arguments
-    - Build the API URL
-    - Make the API request to create the change request
-    - Handle the response and output the result
+      - name: Create CHG Ticket
+        id: new_change
+        uses: bwhitehead0/create_snow_change@main
+        with:
+          snow_url: ${{ env.SN_URL }}
+          snow_user: ${{ secrets.mySnowUser }}
+          snow_password: ${{ secrets.mySnowPass }}
+          snow_client_id: ${{ secrets.mySnowPass }}
+          snow_client_secret: ${{ secrets.mySnowClientId }}
+          snow_ci: ${{ env.SN_CI }}
+          change_title: "Deploying tag ${{ github.ref_name }}"
+          change_description: "Automated deployment for tag ${{ github.ref_name }}"
+      
+      - name: Create work_notes message
+        run: |
+          LOG_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/${{ steps.job_id.outputs.job_id }}"
 
-6. err()
-  - Usage: `err "error message"`  
-  - Description: Outputs an error message to stderr
+          WORKFLOW_STEP_MESSAGE="Dummy worknotes message. Using the old API action method. Starting deployment to ${{ env.ENV }} environment via GitHub Actions. See below and workflow logs for additional details.\r\n"
 
-7. check_application_installed()
-  - Usage: `check_application_installed "application_name"`
-  - Description: Checks if the specified application is installed
+          GITHUB_USER="GitHub User: $GITHUB_ACTOR\r\n"
+          GITHUB_REPOSITORY="GitHub Repo: ${{ github.repository }}\r\n"
+          CHANGE_TICKET="Change Ticket: ${{ steps.new_change.outputs.change_ticket_number }}\r\n"
+          DEPLOYMENT_TAG="Deployment Tag: ${{ github.ref_name }}\r\n"
+          DEPLOYMENT_ENV="Deployment Environment: ${{ env.ENV }}\r\n"
+          GITHUB_RUN_ID="GitHub Workflow ID: ${{ github.run_id }}\r\n"
+          GITHUB_ACTIONS_URL="Workflow Log: [code]<a href=$LOG_URL target=_blank>$LOG_URL</a>[/code]"
 
-## original notes
+          echo "WORKNOTES_SINGLELINE=$WORKFLOW_STEP_MESSAGE$GITHUB_USER$GITHUB_REPOSITORY$CHANGE_TICKET$DEPLOYMENT_TAG$DEPLOYMENT_ENV$GITHUB_RUN_ID$USER_COMMENT$GITHUB_ACTIONS_URL" >> $GITHUB_ENV
 
-create CHG:
+      - name: Update CHG
+        uses: bwhitehead0/update_snow_change@main
+        with: 
+          snow_url: ${{ env.SN_URL }}
+          snow_user: ${{ secrets.mySnowUser }}
+          snow_password: ${{ secrets.mySnowPass }}
+          snow_client_id: ${{ secrets.mySnowPass }}
+          snow_client_secret: ${{ secrets.mySnowClientId }}
+          snow_change_sys_id: ${{ steps.new_change.outputs.change_ticket_sys_id }}
+          snow_change_work_notes: ${{ env.WORKNOTES_SINGLELINE }}
+          snow_change_state: -1
+      
+      - name: Example deployment work
+        id: deployment
+        run: |
+          echo "Your deployment operations here."
+          echo "deployment_status=Success" >> $GITHUB_OUTPUT
+      
+      - name: Create post-deploy work_notes message
+        run: |
+          LOG_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/${{ steps.job_id.outputs.job_id }}"
 
-required inputs:
-  * CI name
-  * SN url
-  * user/pass, token
-  * description
-  * short description
+          WORKFLOW_STEP_MESSAGE="Deployment complete with status: ${{ steps.deployment.outputs.deployment_status }}\r\n
+          
+          See below and workflow logs for additional details.\r\n"
 
-optional inputs:
-  * timeout (override default)
-  * response (short/full, default: (?))
+          GITHUB_USER="GitHub User: $GITHUB_ACTOR\r\n"
+          GITHUB_REPOSITORY="GitHub Repo: ${{ github.repository }}\r\n"
+          CHANGE_TICKET="Change Ticket: ${{ steps.new_change.outputs.change_ticket_number }}\r\n"
+          DEPLOYMENT_TAG="Deployment Tag: ${{ github.ref_name }}\r\n"
+          DEPLOYMENT_ENV="Deployment Environment: ${{ env.ENV }}\r\n"
+          GITHUB_RUN_ID="GitHub Workflow ID: ${{ github.run_id }}\r\n"
+          GITHUB_ACTIONS_URL="Workflow Log: [code]<a href=$LOG_URL target=_blank>$LOG_URL</a>[/code]"
 
+          echo "WORKNOTES_SINGLELINE=$WORKFLOW_STEP_MESSAGE$GITHUB_USER$GITHUB_REPOSITORY$CHANGE_TICKET$DEPLOYMENT_TAG$DEPLOYMENT_ENV$GITHUB_RUN_ID$USER_COMMENT$GITHUB_ACTIONS_URL" >> $GITHUB_ENV
+      
+      - name: Update CHG post-deployment
+        uses: bwhitehead0/update_snow_change@main
+        with: 
+          snow_url: ${{ env.SN_URL }}
+          snow_user: ${{ secrets.mySnowUser }}
+          snow_password: ${{ secrets.mySnowPass }}
+          snow_client_id: ${{ secrets.mySnowPass }}
+          snow_client_secret: ${{ secrets.mySnowClientId }}
+          snow_change_sys_id: ${{ steps.new_change.outputs.change_ticket_sys_id }}
+          snow_change_work_notes: ${{ env.WORKNOTES_SINGLELINE }}
+      
+      - name: Get CHG Ticket Details
+        id: change_detail
+        uses: bwhitehead0/get_snow_change@main
+        with:
+          snow_url: ${{ env.SN_URL }}
+          snow_user: ${{ secrets.mySnowUser }}
+          snow_password: ${{ secrets.mySnowPass }}
+          snow_client_id: ${{ secrets.mySnowPass }}
+          snow_client_secret: ${{ secrets.mySnowClientId }}
+          change_ticket_number: ${{ steps.new_change.outputs.change_ticket_number }}
+          snow_timeout: "60"
+          debug: "false"
 
-required script actions:
-  * URL encode CI name (see bwhitehead0/url_encode_string@v1)
-  * get sys_ID using URL encoded CI name (endpoint: table/cmdb_ci_service_discovered)
-  * create CHG using sys_id and other required info (description, etc)
-  * capture SN response payload and write to GITHUB_OUTPUT
-  * error handling
+      - name: Display CHG details
+        run: |
+          echo "CHG sys_id: ${{ steps.change_detail.outputs.change_sys_id }}"
+          echo "CHG type: ${{ steps.change_detail.outputs.change_type }}"
+          echo "CHG requested by: ${{ steps.change_detail.outputs.change_requested_by }}"
+          echo "CHG CAB review: ${{ steps.change_detail.outputs.change_cab_reviewed }}"
+          echo "CHG state: ${{ steps.change_detail.outputs.change_state }}"
+          echo "CHG state code: ${{ steps.change_detail.outputs.change_state_code }}"
+          echo "CHG start date: ${{ steps.change_detail.outputs.change_start_date }}"
+          echo "CHG end date: ${{ steps.change_detail.outputs.change_end_date }}"
+          echo "CHG cmdb_ci: ${{ steps.change_detail.outputs.change_cmdb_ci }}"
+          echo "CHG cmdb_ci sys_id: ${{ steps.change_detail.outputs.change_cmdb_ci_sys_id }}"
+          printf '%s\n' 'CHG Detail: ${{ steps.change_detail.outputs.change_detail }}'
+      
+      - name: Prep close ticket
+        run: |
+          close_notes="Closing CHG ticket with status: ${{ steps.deployment.outputs.deployment_status }}"
+          if [[ ${{ steps.deployment.outputs.deployment_status }} == "Success" ]]; then
+            close_code="Successful"
+          else
+            close_code="Unsuccessful"
+          fi
+          echo "close_notes=$close_notes" >> $GITHUB_ENV
+          echo "close_code=$close_code" >> $GITHUB_ENV
 
-requires:
-  * jq
-  * curl
+      - name: Set CHG ticket to review
+        uses: bwhitehead0/update_snow_change@main
+        with: 
+          snow_url: ${{ env.SN_URL }}
+          snow_user: ${{ secrets.mySnowUser }}
+          snow_password: ${{ secrets.mySnowPass }}
+          snow_client_id: ${{ secrets.mySnowPass }}
+          snow_client_secret: ${{ secrets.mySnowClientId }}
+          snow_change_sys_id: ${{ steps.new_change.outputs.change_ticket_sys_id }}
+          snow_change_state: 0
+
+      - name: Close CHG ticket
+        uses: bwhitehead0/update_snow_change@main
+        with: 
+          snow_url: ${{ env.SN_URL }}
+          snow_user: ${{ secrets.mySnowUser }}
+          snow_password: ${{ secrets.mySnowPass }}
+          snow_client_id: ${{ secrets.mySnowPass }}
+          snow_client_secret: ${{ secrets.mySnowClientId }}
+          snow_change_sys_id: ${{ steps.new_change.outputs.change_ticket_sys_id }}
+          snow_change_state: 3
+          snow_change_close_code: ${{ env.close_code }}
+          snow_change_close_notes: ${{ env.close_notes}}
+```

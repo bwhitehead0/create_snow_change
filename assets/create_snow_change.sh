@@ -8,13 +8,13 @@ DEBUG=false
 # error output function
 err() {
   # date format year-month-day hour:minute:second.millisecond+timezone - requires coreutils date
-    echo "$(date +'%Y-%m-%dT%H:%M:%S.%3N%z') - Error - $1" >&2
+    printf '%s\n' "$(date +'%Y-%m-%dT%H:%M:%S.%3N%z') - Error - $1" >&2
 }
 
 dbg() {
   # date format year-month-day hour:minute:second.millisecond+timezone - requires coreutils date
   if [[ "$DEBUG" == true ]]; then
-    echo "$(date +'%Y-%m-%dT%H:%M:%S.%3N%z') - Debug - $1" >&2
+    printf '%s\n' "$(date +'%Y-%m-%dT%H:%M:%S.%3N%z') - Debug - $1" >&2
   fi
 }
 
@@ -312,7 +312,7 @@ create_chg() {
   done
 
   # Debug output all passed parameters
-  dbg "DEBUG create_chg(): All passed parameters:"
+  dbg "create_chg(): All passed parameters:"
   dbg " json_payload: $json_payload"
   dbg " sn_url: $sn_url"
   dbg " username: $username"
@@ -336,7 +336,7 @@ create_chg() {
   fi
 
   if [[ ( -z "$username" && -z "$password" ) || -z "$token" ]]; then
-    err "create_chg(): Missing required parameter: either username + password or token."
+    err "create_chg(): Missing required parameter(s): either username + password or token."
     exit 1
   fi
 
@@ -349,6 +349,7 @@ create_chg() {
   # if token is set use that, otherwise use username and password
   # if both are set, use token
   # save HTTP response code to variable, API response to file (new_chg_response.json)
+  # TODO: update to use variables for response and body like in token_auth()
   if [[ -n "$token" ]]; then
     dbg "create_chg(): Using token for authentication."
     response=$(curl -k --request POST \
@@ -403,7 +404,7 @@ main() {
   local short_description=""
   local username=""
   local password=""
-  local token=""
+  # local token="" # need to remove in next update, replaced by BEARER_TOKEN for clarity
   local timeout="60" # default timeout value
   local oauth_endpoint="oauth_token.do"
   local client_id=""
@@ -416,18 +417,17 @@ main() {
 
   while getopts ":c:l:d:s:u:p:C:S:o:r:D:P" opt; do
     case "$opt" in
-      c) ci_name="$OPTARG" ;;
-      l) sn_url="$OPTARG" ;;
-      d) description="$OPTARG" ;;
-      s) short_description="$OPTARG" ;;
       u) username="$OPTARG" ;;
       p) password="$OPTARG" ;;
       C) client_id="$OPTARG" ;;
       S) client_secret="$OPTARG" ;;
+      c) ci_name="$OPTARG" ;;
+      l) sn_url="$OPTARG" ;;
       o) timeout="$OPTARG" ;;
-      # r) response_type="$OPTARG" ;;
       D) DEBUG="$OPTARG" ;;
       P) DEBUG_PASS=true ;;
+      d) description="$OPTARG" ;;
+      s) short_description="$OPTARG" ;;
       :) err "Option -$OPTARG requires an argument."; exit 1 ;;
       ?) err "Invalid option: -$OPTARG"; exit 1 ;;
       *) err "Invalid option: -$OPTARG"; exit 1 ;;
@@ -472,7 +472,6 @@ main() {
   fi
 
   # check for required parameters
-  # double check this logic around user/pass/client_id/client_secret
   if [[ -z "$ci_name" || -z "$sn_url" || -z "$short_description" || ( -z "$username" && -z "$password" ) || ( -z "$username" && -z "$password" && -z "$client_id" && -z "$client_secret" ) ]]; then
     err "main(): Missing required parameters: ci_name, sn_url, short_description, and either Username and Password, or Username + Password + Client ID + Client Secret."
     exit 1
@@ -501,6 +500,8 @@ main() {
 
   ci_sys_id=$(get_ci_sys_id -c "$ci_name" -l "${sn_url}" -u "${username}" -p "${password}" -t "${BEARER_TOKEN}") # done
   json_payload=$(create_json_payload -c "${ci_sys_id}" -d "${description}" -s "${short_description}") # done
+
+  # ? might need to dump this to variable(s) and evaluate, use `printf '%s\n'` to output the actual JSON payload, and trigger logic based on HTTP response code
   create_chg -j "${json_payload}" -l "${sn_url}" -u "${username}" -p "${password}" -o "${timeout}" -t "${BEARER_TOKEN}" # done
 
 }

@@ -2,7 +2,6 @@ name: create_snow_change
 description: Create ServiceNow CHG ticket
 author: bwhitehead0
 inputs:
-  # ! confirm these, copilot auto-generated the inputs
   snow_url:
     description: ServiceNow URL (e.g., https://my-company.service-now.com)
     required: true
@@ -44,7 +43,7 @@ inputs:
   debug:
     description: Enable debug output
     required: false
-    default: false
+    default: "false"
   # change_schedule_start:
   #   # seems to follow format yyyy-MM-dd'T'HH:mm:ssZ?
   #   # in script, set default to now + 30sec? in future, add to input from action and workflow_dispatch inputs?
@@ -63,16 +62,10 @@ inputs:
   snow_timeout:
     description: "Timeout for ServiceNow API call (default: 60)"
     required: false
-    default: 60
-  # response_type:
-  #   description: "Type of response to return (full, short)"
-  #   required: false
-  #   default: "short"
+    default: "60"
 outputs:
-  # confirm the output value naming convention. individual output for CHG, sys_id, and full JSON response?
-  # TODO: update outputs in steps section to parse 'change_ticket_number' and 'change_ticket_sys_id' from 'response', and add 'response' output
   change_ticket_number:
-    description: The number of the created change ticket
+    description: The created change ticket number
     value: ${{ steps.create_change.outputs.change_ticket_number }}
   change_ticket_sys_id:
     description: The sys_id of the created change ticket
@@ -86,6 +79,7 @@ runs:
     - name: Create ServiceNow Change Ticket
       id: create_change
       # TODO: add optional/TBD inputs
+      # TODO: update debug and regular output for efficiency, set to variable once and output values instead of performing same command multiple times
       run: |
         response=$(${{ github.action_path }}/assets/create_snow_change.sh \
         -c "${{ inputs.snow_ci }}" \
@@ -100,13 +94,13 @@ runs:
         -D "${{ inputs.debug }}")
 
         if [ "${{ inputs.debug }}" = "true" ]; then
-          echo "change_ticket_sys_id=$(echo $response | jq -r '.result.sys_id.value')"
-          echo "change_ticket_number=$(echo $response | jq -r '.result.number.value')"
+          echo "change_ticket_sys_id=$(printf '%s\n' $response | jq -r '.result.sys_id.value')"
+          echo "change_ticket_number=$(printf '%s\n' $response | jq -r '.result.number.value')"
         fi
 
-        echo "change_ticket_sys_id=$(echo $response | jq -r '.result.sys_id.value')" >> $GITHUB_OUTPUT
-        echo "change_ticket_number=$(echo $response | jq -r '.result.number.value')" >> $GITHUB_OUTPUT
-        echo "response=$response" >> $GITHUB_OUTPUT
+        echo "change_ticket_sys_id=$(printf '%s\n' $response | jq -r '.result.sys_id.value')" >> $GITHUB_OUTPUT
+        echo "change_ticket_number=$(printf '%s\n' $response | jq -r '.result.number.value')" >> $GITHUB_OUTPUT
+        printf '%s\n' "response=$response" >> $GITHUB_OUTPUT
 
       shell: bash
 
