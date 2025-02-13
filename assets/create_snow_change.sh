@@ -8,13 +8,13 @@ DEBUG=false
 # error output function
 err() {
   # date format year-month-day hour:minute:second.millisecond+timezone - requires coreutils date
-    echo "$(date +'%Y-%m-%dT%H:%M:%S.%3N%z') - Error - $1" >&2
+    printf '%s\n' "$(date +'%Y-%m-%dT%H:%M:%S.%3N%z') - Error - $1" >&2
 }
 
 dbg() {
   # date format year-month-day hour:minute:second.millisecond+timezone - requires coreutils date
   if [[ "$DEBUG" == true ]]; then
-    echo "$(date +'%Y-%m-%dT%H:%M:%S.%3N%z') - Debug - $1" >&2
+    printf '%s\n' "$(date +'%Y-%m-%dT%H:%M:%S.%3N%z') - Debug - $1" >&2
   fi
 }
 
@@ -312,7 +312,7 @@ create_chg() {
   done
 
   # Debug output all passed parameters
-  dbg "DEBUG create_chg(): All passed parameters:"
+  dbg "create_chg(): All passed parameters:"
   dbg " json_payload: $json_payload"
   dbg " sn_url: $sn_url"
   dbg " username: $username"
@@ -336,7 +336,7 @@ create_chg() {
   fi
 
   if [[ ( -z "$username" && -z "$password" ) || -z "$token" ]]; then
-    err "create_chg(): Missing required parameter: either username + password or token."
+    err "create_chg(): Missing required parameter(s): either username + password or token."
     exit 1
   fi
 
@@ -349,6 +349,7 @@ create_chg() {
   # if token is set use that, otherwise use username and password
   # if both are set, use token
   # save HTTP response code to variable, API response to file (new_chg_response.json)
+  # TODO: update to use variables for response and body like in token_auth()
   if [[ -n "$token" ]]; then
     dbg "create_chg(): Using token for authentication."
     response=$(curl -k --request POST \
@@ -499,6 +500,8 @@ main() {
 
   ci_sys_id=$(get_ci_sys_id -c "$ci_name" -l "${sn_url}" -u "${username}" -p "${password}" -t "${BEARER_TOKEN}") # done
   json_payload=$(create_json_payload -c "${ci_sys_id}" -d "${description}" -s "${short_description}") # done
+
+  # ? might need to dump this to variable(s) and evaluate, use `printf '%s\n'` to output the actual JSON payload, and trigger logic based on HTTP response code
   create_chg -j "${json_payload}" -l "${sn_url}" -u "${username}" -p "${password}" -o "${timeout}" -t "${BEARER_TOKEN}" # done
 
 }
