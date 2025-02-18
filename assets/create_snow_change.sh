@@ -8,13 +8,13 @@ DEBUG=false
 # error output function
 err() {
   # date format year-month-day hour:minute:second.millisecond+timezone - requires coreutils date
-    printf '%s\n' "$(date +'%Y-%m-%dT%H:%M:%S.%3N%z') - Error - $1" >&2
+    printf '%s' "$(date +'%Y-%m-%dT%H:%M:%S.%3N%z') - Error - $1" >&2
 }
 
 dbg() {
   # date format year-month-day hour:minute:second.millisecond+timezone - requires coreutils date
   if [[ "$DEBUG" == true ]]; then
-    printf '%s\n' "$(date +'%Y-%m-%dT%H:%M:%S.%3N%z') - Debug - $1" >&2
+    printf '%s' "$(date +'%Y-%m-%dT%H:%M:%S.%3N%z') - Debug - $1" >&2
   fi
 }
 
@@ -277,12 +277,12 @@ create_json_payload() {
   dbg "create_json_payload(): json_payload: ${json_payload}"
 
   # silently validate the JSON
-  if ! echo "$json_payload" | jq empty > /dev/null 2>&1; then
+  if ! printf '%s' "$json_payload" | jq empty > /dev/null 2>&1; then
     err "Invalid JSON payload. Check input values."
     exit 1
   else
     # return json payload
-    echo "${json_payload}"
+    printf '%s' "${json_payload}"
   fi
 }
 
@@ -501,7 +501,7 @@ main() {
   ci_sys_id=$(get_ci_sys_id -c "$ci_name" -l "${sn_url}" -u "${username}" -p "${password}" -t "${BEARER_TOKEN}") # done
   json_payload=$(create_json_payload -c "${ci_sys_id}" -d "${description}" -s "${short_description}") # done
 
-  # ? might need to dump this to variable(s) and evaluate, use `printf '%s\n'` to output the actual JSON payload, and trigger logic based on HTTP response code
+  # ? might need to dump this to variable(s) and evaluate, use `printf '%s'` to output the actual JSON payload, and trigger logic based on HTTP response code
   create_chg -j "${json_payload}" -l "${sn_url}" -u "${username}" -p "${password}" -o "${timeout}" -t "${BEARER_TOKEN}" # done
 
 }
