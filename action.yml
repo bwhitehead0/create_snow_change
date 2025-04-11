@@ -80,6 +80,8 @@ runs:
       id: create_change
       # TODO: add optional/TBD inputs
       # TODO: update debug and regular output for efficiency, set to variable once and output values instead of performing same command multiple times
+      # TODO: accept '-a' for additional fields, receiving a string of k/v pairs in format of "key, value|key, value|key, value|key, value"
+      # ? confirm structure of string variable to be parsed into actual k/v pairs
       run: |
         response=$(${{ github.action_path }}/assets/create_snow_change.sh \
         -c "${{ inputs.snow_ci }}" \

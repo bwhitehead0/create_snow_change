@@ -252,6 +252,26 @@ get_ci_sys_id() {
   fi
 }
 
+# validate additional fields
+validate_additional_fields() {
+  # TODO
+  # additional fields should come thru as a string, with '|' delimiter, in format of key=value|key=value|key=value
+  # if contains '|', split, validate format (key=value), validate key=value format for all results from split
+  # key should contain alphanum and underscores
+  # use nested function(s): test_key_format()
+
+  # if contains '|', split on '|' into an array, then validate each array, call test_key_format() for each key
+  # if the pieces of the string are valid, return true, else return false
+  true
+}
+
+# marshall additional fields
+marshall_additional_fields() {
+  # TODO
+  # 
+  true
+}
+
 # create JSON payload
 create_json_payload() {
   local OPTIND=1 # reset OPTIND so getopts starts at 1 and parameters are parsed correctly
@@ -272,6 +292,8 @@ create_json_payload() {
   # create JSON payload
   # this needs to be way more dynamic - chg_model, x_kpmg3_pit_change_testing_signoff shouldn't be hardcoded, and x_kpmg3_pit_change_testing_signoff looks like a custom field anyway.
   # this likely limits the use of this script to our internal environment, and even then, the differences between prod and nonprod servicenow may make that even more difficult.
+  # TODO: after creating new function to marshall incoming variable for additional fields into k/v pairs to add here, remove x_kpmg3_pit_change_testing_signoff as a hard-coded field.
+  # TODO: if -a arg for script and k/v pairs passed, then add a variable to the below creation of json_payloadß
   json_payload="{\"chg_model\": \"Standard\", \"description\": \"${description}\", \"short_description\": \"${short_description}\", \"cmdb_ci\": \"${ci_sys_id}\", \"type\": \"Standard\", \"x_kpmg3_pit_change_testing_signoff\": \"PreProd Change\"}"
 
   dbg "create_json_payload(): json_payload: ${json_payload}"
@@ -402,6 +424,7 @@ main() {
   local sn_url=""
   local description=""
   local short_description=""
+  local additional_fields=""
   local username=""
   local password=""
   # local token="" # need to remove in next update, replaced by BEARER_TOKEN for clarity
@@ -415,7 +438,7 @@ main() {
   # ? DONE: (debug, not debug_pass). TODO: update debug/debug_pass to accept true/false, not just a flag, for use with action.yml and users setting DEBUG at runtime
   # TODO: remove DEBUG_PASS entirely?
 
-  while getopts ":c:l:d:s:u:p:C:S:o:r:D:P" opt; do
+  while getopts ":c:l:d:s:a:u:p:C:S:o:r:D:P" opt; do
     case "$opt" in
       u) username="$OPTARG" ;;
       p) password="$OPTARG" ;;
@@ -428,6 +451,7 @@ main() {
       P) DEBUG_PASS=true ;;
       d) description="$OPTARG" ;;
       s) short_description="$OPTARG" ;;
+      a) additional_fields="$OPTARG" ;;
       :) err "Option -$OPTARG requires an argument."; exit 1 ;;
       ?) err "Invalid option: -$OPTARG"; exit 1 ;;
       *) err "Invalid option: -$OPTARG"; exit 1 ;;
@@ -444,6 +468,7 @@ main() {
     dbg " sn_url: $sn_url"
     dbg " description: $description"
     dbg " short_description: $short_description"
+    dbg " additional_fields: $additional_fields"
     dbg " username: $username"
     if [[ "$DEBUG_PASS" == true ]]; then
       dbg " password: $password"
