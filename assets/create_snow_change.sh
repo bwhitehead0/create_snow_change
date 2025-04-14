@@ -258,11 +258,63 @@ validate_additional_fields() {
   # additional fields should come thru as a string, with '|' delimiter, in format of key=value|key=value|key=value
   # if contains '|', split, validate format (key=value), validate key=value format for all results from split
   # key should contain alphanum and underscores
-  # use nested function(s): test_key_format()
+  # use nested function(s): test_key_format(), test_kv_pair()
 
   # if contains '|', split on '|' into an array, then validate each array, call test_key_format() for each key
   # if the pieces of the string are valid, return true, else return false
-  true
+
+  local key_result="false"
+  
+  test_key_format() {
+    local key="$1"
+    local result="false"
+    if [[ "$key" =~ ^[a-zA-Z0-9_]+$ ]]; then
+      # regex for alphanum and underscore
+      result="true"
+    else
+      result="false"
+    fi
+    echo $result
+  }
+
+  test_kv_pair() {
+    # tests if key=value format is valid
+    # simple test to ensure 2 strings on each side of '=' as we already validated the key format
+    true
+  }
+
+  if echo "${1}" | grep '|' > /dev/null; then
+    # check for multiple key/value pairs
+    IFS='|' read -r -a fields <<< "${1}"
+    for field in "${fields[@]}"; do
+      # iterate thru each key/value pair and validate key
+      key=$(echo "$field" | cut -d'=' -f1)
+      key_result=$(test_key_format "$key")
+      if [[ "$key_result" == false ]]; then
+        err "validate_additional_fields(): Invalid additional field key format: $key"
+      else
+        if [[ "$DEBUG" == true ]]; then
+          dbg "validate_additional_fields(): Valid additional field key format: $key"
+        fi
+      fi
+    done
+  else
+    # single key/value pair
+    key=$(echo "${1}" | cut -d'=' -f1)
+    key_result=$(test_key_format "$key")
+    if [[ "$key_result" == false ]]; then
+      # found an invalid key. should be optimized to catch all bad keys but for now catching the first failure is sufficient
+      err "validate_additional_fields(): Invalid additional field key format: $key"
+      exit 1
+    else
+      if [[ "$DEBUG" == true ]]; then
+        dbg "validate_additional_fields(): Valid additional field key format: $key"
+      fi
+    fi
+  fi
+
+  # this should only reach this point if all keys are valid
+  echo "${key_result}"
 }
 
 # marshall additional fields
