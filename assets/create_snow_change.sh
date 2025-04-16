@@ -265,50 +265,53 @@ validate_additional_fields() {
 
   local key_result="false"
   
-  test_key_format() {
-    local key="$1"
-    local result="false"
-    if [[ "$key" =~ ^[a-zA-Z0-9_]+$ ]]; then
-      # regex for alphanum and underscore
-      result="true"
-    else
-      result="false"
-    fi
-    echo $result
-  }
+  # test_key_format() {
+  #   local key="$1"
+  #   local result="false"
+  #   if [[ "$key" =~ ^[a-zA-Z0-9_]+$ ]]; then
+  #     # regex for alphanum and underscore
+  #     result="true"
+  #   else
+  #     result="false"
+  #   fi
+  #   echo $result
+  # }
 
   test_kv_pair() {
     # tests if key=value format is valid
-    # simple test to ensure 2 strings on each side of '=' as we already validated the key format
-    true
+    # regex for alphanum and underscore on left side of '=', any characters on right side
+    if [[ "$1" =~ ^[a-zA-Z0-9_]+=.+$ ]]; then
+      # key is valid, and value exists and not empty string
+      echo "true"
+    else
+      echo "false"
+    fi
   }
 
   if echo "${1}" | grep '|' > /dev/null; then
     # check for multiple key/value pairs
     IFS='|' read -r -a fields <<< "${1}"
     for field in "${fields[@]}"; do
-      # iterate thru each key/value pair and validate key
-      key=$(echo "$field" | cut -d'=' -f1)
-      key_result=$(test_key_format "$key")
-      if [[ "$key_result" == false ]]; then
-        err "validate_additional_fields(): Invalid additional field key format: $key"
+      # iterate thru each key/value pair and validate key and value
+      kv_result=$(test_kv_pair "${field}")
+      if [[ "$kv_result" == false ]]; then
+        err "validate_additional_fields(): Invalid additional fields key/value format: ${field}"
       else
         if [[ "$DEBUG" == true ]]; then
-          dbg "validate_additional_fields(): Valid additional field key format: $key"
+          dbg "validate_additional_fields(): Valid additional fields key/value format: ${field}"
         fi
       fi
     done
   else
     # single key/value pair
-    key=$(echo "${1}" | cut -d'=' -f1)
-    key_result=$(test_key_format "$key")
-    if [[ "$key_result" == false ]]; then
+    kv_result=$(test_kv_pair "${field}")
+    if [[ "$kv_result" == false ]]; then
       # found an invalid key. should be optimized to catch all bad keys but for now catching the first failure is sufficient
-      err "validate_additional_fields(): Invalid additional field key format: $key"
+      err "validate_additional_fields(): Invalid additional fields key/value format: ${field}"
       exit 1
     else
       if [[ "$DEBUG" == true ]]; then
-        dbg "validate_additional_fields(): Valid additional field key format: $key"
+        dbg "validate_additional_fields(): Valid additional fields key/value format: ${field}"
       fi
     fi
   fi
