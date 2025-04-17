@@ -23,7 +23,6 @@ inputs:
     required: true
   # ? possible for future, add category. possible values: Accessory Application Computer Database Facility Mobile Device Network Printer Server Storage Other DevOps, maybe others? back end script should default to 'Application' for now
   change_type:
-    # TODO: implement in script
     description: Type of change (Normal, Emergency, Standard)
     required: false
   change_title:
@@ -33,11 +32,9 @@ inputs:
     description: 'Description of the change (ServiceNow field: description)'
     required: true
   change_business_impact:
-    # TODO: implement in script
     description: Impact of the change (High, Medium, Low)
     required: false
   change_risk:
-    # TODO: implement in script
     description: Risk level of the change (High, Medium, Low)
     required: false
   additional_fields:
@@ -46,51 +43,39 @@ inputs:
     description: 'Additional fields to set on the change ticket (optional, format: "key, value|key, value|key, value|key, value")'
     required: false
   change_start_date:
-    # TODO: implement in script
     # ! check timezone for datetime submission, might need to perform conversion
     description: 'Start date of the change (ServiceNow field: start_date, format: YYYY-MM-DD HH:mm:ss)'
     required: false
   change_end_date:
-    # TODO: implement in script
     # ! check timezone for datetime submission, might need to perform conversion
     description: 'End date of the change (ServiceNow field: end_date, format: YYYY-MM-DD HH:mm:ss)'
     required: false
   change_category:
-    # TODO: implement in script
     description: 'Category of the change (ServiceNow field: category, e.g., Application, Network, etc.)'
     required: true
   change_group:
-    # TODO: implement in script
     description: 'Group to assign the change to (ServiceNow field: assignment_group, e.g., DevOps, IT Support, etc.)'
     required: true
   change_implementation_plan:
-    # TODO: implement in script
     description: 'Implementation plan for the change (ServiceNow field: implementation_plan)'
     required: true
   change_risk_impact_analysis:
-    # TODO: implement in script
     description: 'Risk and impact analysis for the change (ServiceNow field: risk_impact_analysis)'
     required: true
   change_backout_plan:
-    # TODO: implement in script
     description: 'Backout plan for the change (ServiceNow field: backout_plan)'
     required: true
   change_test_plan:
-    # TODO: implement in script
     description: 'Test plan for the change (ServiceNow field: test_plan)'
     required: true
   change_justification:
-    # TODO: implement in script
     description: 'Justification for the change (ServiceNow field: justification)'
     required: true
-  
   debug:
     description: Enable debug output
     required: false
     default: "false"
-  
   change_assigned_to:
-    # TODO: implement in script
     description: User to assign the change to (defaults to current GitHub user)
     required: false
     default: ${{ github.actor }}

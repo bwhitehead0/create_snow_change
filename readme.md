@@ -44,6 +44,20 @@ jobs:
 * `change_description`: Description of the change (ServiceNow field: description). **Required**.
 * `debug`: Enable debug output. **Optional**.
 * `snow_timeout`: Timeout for ServiceNow API call. **Optional**, default='60'.
+* `change_type`: Type of change (Normal, Emergency, Standard). **Optional**.
+* `change_business_impact`: Impact of the change (High, Medium, Low). **Optional**.
+* `change_risk`: Risk level of the change (High, Medium, Low). **Optional**.
+* `change_start_date`: Start date of the change (ServiceNow field: start_date, format: YYYY-MM-DD HH:mm:ss). **Optional**.
+* `change_end_date`: End date of the change (ServiceNow field: end_date, format: YYYY-MM-DD HH:mm:ss). **Optional**.
+* `change_category`: Category of the change (ServiceNow field: category, e.g., Application, Network, etc.). **Required**.
+* `change_group`: Group to assign the change to (ServiceNow field: assignment_group, e.g., DevOps, IT Support, etc.). **Required**.
+* `change_implementation_plan`: Implementation plan for the change (ServiceNow field: implementation_plan). **Required**.
+* `change_risk_impact_analysis`: Risk and impact analysis for the change (ServiceNow field: risk_impact_analysis). **Required**.
+* `change_backout_plan`: Backout plan for the change (ServiceNow field: backout_plan). **Required**.
+* `change_test_plan`: Test plan for the change (ServiceNow field: test_plan). **Required**.
+* `change_justification`: Justification for the change (ServiceNow field: justification). **Required**.
+* `additional_fields`: Additional fields to set on the change ticket (optional, format: "key, value|key, value|key, value|key, value"). **Optional**.
+
 
 ### Outputs
 
