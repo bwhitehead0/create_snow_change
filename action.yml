@@ -32,7 +32,7 @@ inputs:
   change_description:
     description: 'Description of the change (ServiceNow field: description)'
     required: true
-  change_impact:
+  change_business_impact:
     # TODO: implement in script
     description: Impact of the change (High, Medium, Low)
     required: false
@@ -40,20 +40,55 @@ inputs:
     # TODO: implement in script
     description: Risk level of the change (High, Medium, Low)
     required: false
+  additional_fields:
+    # string of k/v pairs in format of "key=value|key=value|key=value|key=value"
+    # ? should we just accept JSON? might be difficult for some users
+    description: 'Additional fields to set on the change ticket (optional, format: "key, value|key, value|key, value|key, value")'
+    required: false
+  change_start_date:
+    # TODO: implement in script
+    # ! check timezone for datetime submission, might need to perform conversion
+    description: 'Start date of the change (ServiceNow field: start_date, format: YYYY-MM-DD HH:mm:ss)'
+    required: false
+  change_end_date:
+    # TODO: implement in script
+    # ! check timezone for datetime submission, might need to perform conversion
+    description: 'End date of the change (ServiceNow field: end_date, format: YYYY-MM-DD HH:mm:ss)'
+    required: false
+  change_category:
+    # TODO: implement in script
+    description: 'Category of the change (ServiceNow field: category, e.g., Application, Network, etc.)'
+    required: true
+  change_group:
+    # TODO: implement in script
+    description: 'Group to assign the change to (ServiceNow field: assignment_group, e.g., DevOps, IT Support, etc.)'
+    required: true
+  change_implementation_plan:
+    # TODO: implement in script
+    description: 'Implementation plan for the change (ServiceNow field: implementation_plan)'
+    required: true
+  change_risk_impact_analysis:
+    # TODO: implement in script
+    description: 'Risk and impact analysis for the change (ServiceNow field: risk_impact_analysis)'
+    required: true
+  change_backout_plan:
+    # TODO: implement in script
+    description: 'Backout plan for the change (ServiceNow field: backout_plan)'
+    required: true
+  change_test_plan:
+    # TODO: implement in script
+    description: 'Test plan for the change (ServiceNow field: test_plan)'
+    required: true
+  change_justification:
+    # TODO: implement in script
+    description: 'Justification for the change (ServiceNow field: justification)'
+    required: true
+  
   debug:
     description: Enable debug output
     required: false
     default: "false"
-  # change_schedule_start:
-  #   # seems to follow format yyyy-MM-dd'T'HH:mm:ssZ?
-  #   # in script, set default to now + 30sec? in future, add to input from action and workflow_dispatch inputs?
-  #   description: Scheduled start date and time for the change (YYYY-MM-DD HH:mm:ss)
-  #   required: false
-  # change_schedule_end:
-  #   # seems to follow format yyyy-MM-dd'T'HH:mm:ssZ?
-  #   # in script, set default to now + 30sec? in future, add to input from action and workflow_dispatch inputs?
-  #   description: Scheduled end date and time for the change (YYYY-MM-DD HH:mm:ss)
-  #   required: false
+  
   change_assigned_to:
     # TODO: implement in script
     description: User to assign the change to (defaults to current GitHub user)
@@ -93,6 +128,19 @@ runs:
         -o "${{ inputs.snow_timeout }}" \
         -C "${{ inputs.snow_client_id }}" \
         -S "${{ inputs.snow_client_secret }}" \
+        -a "${{ inputs.additional_fields }}" \
+        -T ${{ inputs.change_category }} \
+        -r ${{ inputs.change_risk }} \
+        -G ${{ inputs.change_group }} \
+        -A ${{ inputs.change_start_date }} \
+        -N ${{ inputs.change_end_date }} \
+        -n ${{ inputs.change_implementation_plan }} \
+        -R ${{ inputs.change_risk_impact_analysis }} \
+        -b ${{ inputs.change_backout_plan }} \
+        -t ${{ inputs.change_test_plan }} \
+        -j ${{ inputs.change_justification }} \
+        -B ${{ inputs.change_business_impact }} \
+        -y ${{ inputs.change_type }} \
         -D "${{ inputs.debug }}")
 
         if [ "${{ inputs.debug }}" = "true" ]; then
