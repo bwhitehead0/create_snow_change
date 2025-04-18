@@ -51,6 +51,30 @@ url_encode_string() {
     echo "$output"
 }
 
+# calculate duration timestamp for change end date
+get_duration_timestamp() {
+  # accepts string in format "1h30m" or "1h" or "30m"
+  # returns timestamp in format "YYYY-MM-DD HH:MM:SS"
+
+  # validate input format
+  if [[ ! $1 =~ ^([0-9]+h[0-5]?[0-9]m|[0-9]+h|[0-5]?[0-9]m)$ ]]; then
+    err "get_duration_timestamp(): Invalid duration format. Use '1h30m', '1h', or '30m'."
+    exit 1
+  fi
+  local duration=$1
+  local hours=${duration%%h*}
+  local minutes=${duration##*h}
+  minutes=${minutes%m}
+
+  # Default to 0 if not provided
+  hours=${hours:-0}
+  minutes=${minutes:-0}
+
+  duration_timestamp=$(date -d "+${hours} hours +${minutes} minutes" "+%Y-%m-%d %H:%M:%S")
+
+  echo "$duration_timestamp"
+}
+
 token_auth() {
   # parameters username, password, client_id, client_secret, oauth_URL
   # returns bearer token
@@ -606,6 +630,29 @@ main() {
     validate_additional_fields "$additional_fields"
     # marshall additional fields into JSON format
     marshalled_fields=$(marshall_additional_fields "$additional_fields")
+  fi
+
+  # ! validate behavior of timestamps interacting with servicnow. timezone, etc, may need to be adjusted to UTC
+
+  # calculate start time if input is 'now'
+  if [[ "$change_start_date" =~ ^[Nn][Oo][Ww]$ ]]; then
+    change_start_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    dbg "main(): change_start_date set from 'now' to current time: $change_start_date"
+  fi
+
+  # calculate end time if input is valid duration or timestamp
+  # TODO: accept 24hr time ie 14:45 for 2:45 PM, check not in past, and use same date + specified time
+  # TODO: add some additional validation for BOTH dates, year is current year or next year & < 1min in future (or is that overkill?)
+  # TODO: !! allow timestamp without seconds, ie 2023-10-01 14:45, and convert to full timestamp with seconds
+  if [[ "$change_end_date" =~ ^[0-9]+[hH][0-9]*[mM]?$ ]]; then
+    change_end_date=$(get_duration_timestamp "$change_end_date")
+    dbg "main(): change_end_date set from duration to: $change_end_date"
+  elif [[ "$change_end_date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
+    # if change_end_date is a valid timestamp, do nothing
+    dbg "main(): change_end_date is a valid timestamp: $change_end_date"
+  else
+    err "main(): Invalid change_end_date format. Use '1h30m', '1h', '30m', or 'YYYY-MM-DD hh:mm:ss'."
+    exit 1
   fi
 
   # normalize sn_url. remove trailing slash if present
