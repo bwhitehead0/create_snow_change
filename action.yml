@@ -31,9 +31,6 @@ inputs:
   change_description:
     description: 'Description of the change (ServiceNow field: description)'
     required: true
-  change_business_impact:
-    description: Impact of the change (High, Medium, Low)
-    required: false
   change_risk:
     description: Risk level of the change (High, Medium, Low)
     required: false
@@ -124,7 +121,6 @@ runs:
         -b "${{ inputs.change_backout_plan }}" \
         -t "${{ inputs.change_test_plan }}" \
         -j "${{ inputs.change_justification }}" \
-        -B "${{ inputs.change_business_impact }}" \
         -y "${{ inputs.change_type }}" \
         -D "${{ inputs.debug }}")
 
