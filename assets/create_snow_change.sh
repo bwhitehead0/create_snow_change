@@ -345,6 +345,7 @@ marshall_additional_fields() {
       json_fields+=", \"${key}\": \"${value}\""
     done
   dbg "marshall_additional_fields(): json_fields: ${json_fields}"
+  echo "${json_fields}"
 }
 
 # create JSON payload
