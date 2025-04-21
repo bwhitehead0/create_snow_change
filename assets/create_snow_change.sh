@@ -524,6 +524,16 @@ main() {
   local username=""
   local password=""
   local marshalled_fields=""
+  local change_category=""
+  local change_risk=""
+  local change_group=""
+  local change_start_date=""
+  local change_end_date=""
+  local change_implementation_plan=""
+  local change_risk_impact_analysis=""
+  local change_backout_plan=""
+  local change_test_plan=""
+  local change_justification=""
   # local token="" # need to remove in next update, replaced by BEARER_TOKEN for clarity
   local timeout="60" # default timeout value
   local oauth_endpoint="oauth_token.do"
