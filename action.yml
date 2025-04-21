@@ -69,9 +69,8 @@ inputs:
     description: 'Justification for the change (ServiceNow field: justification)'
     required: true
   change_assigned_to:
-    description: 'User to assign the change to (ServiceNow field: assigned_to, defaults to current GitHub user)'
+    description: 'User to assign the change to (ServiceNow field: assigned_to, full email)'
     required: false
-    default: ${{ github.actor }}
   debug:
     description: Enable debug output
     required: false
