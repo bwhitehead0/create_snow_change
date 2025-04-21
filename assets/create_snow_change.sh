@@ -57,7 +57,7 @@ get_duration_timestamp() {
   # returns timestamp in format "YYYY-MM-DD HH:MM:SS"
 
   # validate input format
-  if [[ ! $1 =~ ^([0-9]+h[0-5]?[0-9]m|[0-9]+h|[0-5]?[0-9]m)$ ]]; then
+  if [[ ! $1 =~ ^([0-9]+[hH])?([0-9]+[mM])?$ ]]; then
     err "get_duration_timestamp(): Invalid duration format. Use '1h30m', '1h', or '30m'."
     exit 1
   fi
