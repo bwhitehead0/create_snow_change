@@ -76,10 +76,6 @@ inputs:
     description: Enable debug output
     required: false
     default: "false"
-  change_assigned_to:
-    description: User to assign the change to (defaults to current GitHub user)
-    required: false
-    default: ${{ github.actor }}
   snow_timeout:
     description: "Timeout for ServiceNow API call (default: 60)"
     required: false
