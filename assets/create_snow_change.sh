@@ -698,6 +698,7 @@ main() {
 
   ci_sys_id=$(get_ci_sys_id -c "$ci_name" -l "${sn_url}" -u "${username}" -p "${password}" -t "${BEARER_TOKEN}") # done
 
+  dbg "main(): marshalled_fields: ${marshalled_fields}"
   # json_payload=$(create_json_payload -c "${ci_sys_id}" -d "${description}" -s "${short_description}" -a "${marshalled_fields}") # done
   json_payload=$(create_json_payload -c "${ci_sys_id}" \
     -d "${description}" \
