@@ -114,18 +114,18 @@ runs:
         -C "${{ inputs.snow_client_id }}" \
         -S "${{ inputs.snow_client_secret }}" \
         -a "${{ inputs.additional_fields }}" \
-        -T ${{ inputs.change_category }} \
-        -r ${{ inputs.change_risk }} \
-        -G ${{ inputs.change_group }} \
-        -A ${{ inputs.change_start_date }} \
-        -N ${{ inputs.change_end_date }} \
-        -n ${{ inputs.change_implementation_plan }} \
-        -R ${{ inputs.change_risk_impact_analysis }} \
-        -b ${{ inputs.change_backout_plan }} \
-        -t ${{ inputs.change_test_plan }} \
-        -j ${{ inputs.change_justification }} \
-        -B ${{ inputs.change_business_impact }} \
-        -y ${{ inputs.change_type }} \
+        -T "${{ inputs.change_category }}" \
+        -r "${{ inputs.change_risk }}" \
+        -G "${{ inputs.change_group }}" \
+        -A "${{ inputs.change_start_date }}" \
+        -N "${{ inputs.change_end_date }}" \
+        -n "${{ inputs.change_implementation_plan }}" \
+        -R "${{ inputs.change_risk_impact_analysis }}" \
+        -b "${{ inputs.change_backout_plan }}" \
+        -t "${{ inputs.change_test_plan }}" \
+        -j "${{ inputs.change_justification }}" \
+        -B "${{ inputs.change_business_impact }}" \
+        -y "${{ inputs.change_type }}" \
         -D "${{ inputs.debug }}")
 
         if [ "${{ inputs.debug }}" = "true" ]; then
