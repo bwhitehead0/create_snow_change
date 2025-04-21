@@ -70,7 +70,9 @@ get_duration_timestamp() {
   hours=${hours:-0}
   minutes=${minutes:-0}
 
-  duration_timestamp=$(date -d "+${hours} hours +${minutes} minutes" "+%Y-%m-%d %H:%M:%S")
+  # duration_timestamp=$(date -d "+${hours} hours +${minutes} minutes" "+%Y-%m-%d %H:%M:%S")
+  # Use UTC format
+  duration_timestamp=$(date -u -d "+${hours} hours +${minutes} minutes" "+%Y-%m-%dT%H:%M:%SZ")
 
   echo "$duration_timestamp"
 }
@@ -354,7 +356,7 @@ create_json_payload() {
   local ci_sys_id=""
   local additional_fields=""
 
-  while getopts "c:d:s:a:T:r:G:A:N:n:R:b:t:j:B:y:" opt; do
+  while getopts "c:d:s:a:T:r:G:A:N:n:R:b:t:j:y:" opt; do
     case "$opt" in
       c) ci_sys_id="$OPTARG" ;;
       d) description="$OPTARG" ;;
@@ -370,7 +372,7 @@ create_json_payload() {
       b) change_backout_plan="$OPTARG" ;;
       t) change_test_plan="$OPTARG" ;;
       j) change_justification="$OPTARG" ;;
-      B) change_business_impact="$OPTARG" ;;
+      #B) change_business_impact="$OPTARG" ;;
       y) change_type="$OPTARG" ;;
       *) err "Invalid option: -$OPTARG"; exit 1 ;;
     esac
@@ -386,10 +388,10 @@ create_json_payload() {
     # $additional_fields will include prepended comma and space, so we can just append it to the JSON payload
     dbg "create_json_payload(): Additional fields are set: ${additional_fields}"
     
-    json_payload="{\"chg_model\": \"Standard\", \"description\": \"${description}\", \"short_description\": \"${short_description}\", \"cmdb_ci\": \"${ci_sys_id}\", \"type\": \"Standard\", \"x_kpmg3_pit_change_testing_signoff\": \"PreProd Change\", \"category\": \"${change_category}\" , \"risk\": \"${change_risk}\" , \"assignment_group\": \"${change_group}\" , \"start_date\": \"${change_start_date}\" , \"end_date\": \"${change_end_date}\" , \"implementation_plan\": \"${change_implementation_plan}\" , \"risk_impact_analysis\": \"${change_risk_impact_analysis}\" , \"backout_plan\": \"${change_backout_plan}\" , \"test_plan\": \"${change_test_plan}\" , \"justification\": \"${change_justification}\" , \"u_business_impact\": \"${change_business_impact}\" , \"type\": \"${change_type}\"${additional_fields}}"
+    json_payload="{\"chg_model\": \"Standard\", \"description\": \"${description}\", \"short_description\": \"${short_description}\", \"cmdb_ci\": \"${ci_sys_id}\", \"type\": \"${change_type}\", \"x_kpmg3_pit_change_testing_signoff\": \"PreProd Change\", \"category\": \"${change_category}\" , \"risk\": \"${change_risk}\" , \"assignment_group\": \"${change_group}\" , \"start_date\": \"${change_start_date}\" , \"end_date\": \"${change_end_date}\" , \"implementation_plan\": \"${change_implementation_plan}\" , \"risk_impact_analysis\": \"${change_risk_impact_analysis}\" , \"backout_plan\": \"${change_backout_plan}\" , \"test_plan\": \"${change_test_plan}\" , \"justification\": \"${change_justification}\"${additional_fields}}"
   else
     dbg "create_json_payload(): No additional fields set."
-    json_payload="{\"chg_model\": \"Standard\", \"description\": \"${description}\", \"short_description\": \"${short_description}\", \"cmdb_ci\": \"${ci_sys_id}\", \"type\": \"Standard\", \"x_kpmg3_pit_change_testing_signoff\": \"PreProd Change\", \"category\": \"${change_category}\" , \"risk\": \"${change_risk}\" , \"assignment_group\": \"${change_group}\" , \"start_date\": \"${change_start_date}\" , \"end_date\": \"${change_end_date}\" , \"implementation_plan\": \"${change_implementation_plan}\" , \"risk_impact_analysis\": \"${change_risk_impact_analysis}\" , \"backout_plan\": \"${change_backout_plan}\" , \"test_plan\": \"${change_test_plan}\" , \"justification\": \"${change_justification}\" , \"u_business_impact\": \"${change_business_impact}\" , \"type\": \"${change_type}\"}"
+    json_payload="{\"chg_model\": \"Standard\", \"description\": \"${description}\", \"short_description\": \"${short_description}\", \"cmdb_ci\": \"${ci_sys_id}\", \"type\": \"Standard\", \"x_kpmg3_pit_change_testing_signoff\": \"PreProd Change\", \"category\": \"${change_category}\" , \"risk\": \"${change_risk}\" , \"assignment_group\": \"${change_group}\" , \"start_date\": \"${change_start_date}\" , \"end_date\": \"${change_end_date}\" , \"implementation_plan\": \"${change_implementation_plan}\" , \"risk_impact_analysis\": \"${change_risk_impact_analysis}\" , \"backout_plan\": \"${change_backout_plan}\" , \"test_plan\": \"${change_test_plan}\" , \"justification\": \"${change_justification}\"}"
   fi
 
   dbg "create_json_payload(): json_payload: ${json_payload}"
@@ -547,7 +549,7 @@ main() {
   # ? DONE: (debug, not debug_pass). TODO: update debug/debug_pass to accept true/false, not just a flag, for use with action.yml and users setting DEBUG at runtime
   # TODO: remove DEBUG_PASS entirely?
 
-  while getopts ":c:l:d:s:a:u:p:C:S:o:r:D:P:T:r:G:A:N:n:R:b:t:j:B:y:" opt; do
+  while getopts ":c:l:d:s:a:u:p:C:S:o:r:D:P:T:r:G:A:N:n:R:b:t:j:y:" opt; do
     case "$opt" in
       u) username="$OPTARG" ;;
       p) password="$OPTARG" ;;
@@ -571,7 +573,7 @@ main() {
       b) change_backout_plan="$OPTARG" ;;
       t) change_test_plan="$OPTARG" ;;
       j) change_justification="$OPTARG" ;;
-      B) change_business_impact="$OPTARG" ;;
+      #B) change_business_impact="$OPTARG" ;;
       y) change_type="$OPTARG" ;;
       :) err "Option -$OPTARG requires an argument."; exit 1 ;;
       ?) err "Invalid option: -$OPTARG"; exit 1 ;;
@@ -602,7 +604,7 @@ main() {
     dbg " change_backout_plan: $change_backout_plan"
     dbg " change_test_plan: $change_test_plan"
     dbg " change_justification: $change_justification"
-    dbg " change_business_impact: $change_business_impact"
+    #dbg " change_business_impact: $change_business_impact"
     dbg " change_type: $change_type"
     dbg " additional_fields: $additional_fields"
     dbg " username: $username"
@@ -651,6 +653,7 @@ main() {
 
   # calculate start time if input is 'now'
   if [[ "$change_start_date" =~ ^[Nn][Oo][Ww]$ ]]; then
+    dbg "main(): change_start_date set to 'now', using current time."
     change_start_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     dbg "main(): change_start_date set from 'now' to current time: $change_start_date"
   fi
@@ -707,9 +710,10 @@ main() {
     -b "${change_backout_plan}" \
     -t "${change_test_plan}" \
     -j "${change_justification}" \
-    -B "${change_business_impact}" \
     -y "${change_type}" \
     -a "${marshalled_fields}") # done
+    #-B "${change_business_impact}" \
+
 
   # ? might need to dump this to variable(s) and evaluate, use `printf '%s'` to output the actual JSON payload, and trigger logic based on HTTP response code
   create_chg -j "${json_payload}" -l "${sn_url}" -u "${username}" -p "${password}" -o "${timeout}" -t "${BEARER_TOKEN}" # done
