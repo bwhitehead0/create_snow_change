@@ -579,6 +579,7 @@ main() {
     esac
   done
 
+  DEBUG=true
   # set DEBUG and DEBUG_PASS as environment variables
   export DEBUG
   export DEBUG_PASS
