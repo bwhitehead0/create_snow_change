@@ -656,7 +656,7 @@ main() {
   # TODO: accept 24hr time ie 14:45 for 2:45 PM, check not in past, and use same date + specified time
   # TODO: add some additional validation for BOTH dates, year is current year or next year & < 1min in future (or is that overkill?)
   # TODO: !! allow timestamp without seconds, ie 2023-10-01 14:45, and convert to full timestamp with seconds
-  if [[ "$change_end_date" =~ ^[0-9]+[hH]([0-9]*[mM])?$ ]]; then
+  if [[ "$change_end_date" =~ ^([0-9]+[hH])?([0-9]+[mM])?$ ]]; then
     change_end_date=$(get_duration_timestamp "$change_end_date")
     dbg "main(): change_end_date set from duration to: $change_end_date"
   elif [[ "$change_end_date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
