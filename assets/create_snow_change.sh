@@ -535,6 +535,7 @@ main() {
   local change_test_plan=""
   local change_justification=""
   local change_business_impact=""
+  local change_type=""
   # local token="" # need to remove in next update, replaced by BEARER_TOKEN for clarity
   local timeout="60" # default timeout value
   local oauth_endpoint="oauth_token.do"
