@@ -72,7 +72,7 @@ get_duration_timestamp() {
 
   # duration_timestamp=$(date -d "+${hours} hours +${minutes} minutes" "+%Y-%m-%d %H:%M:%S")
   # Use UTC format
-  duration_timestamp=$(date -u -d "+${hours} hours +${minutes} minutes" "+%Y-%m-%dT%H:%M:%SZ")
+  duration_timestamp=$(date -u -d "+${hours} hours +${minutes} minutes" "+%Y-%m-%d %H:%M:%S")
 
   echo "$duration_timestamp"
 }
@@ -660,7 +660,7 @@ main() {
   # calculate start time if input is 'now'
   if [[ "$change_start_date" =~ ^[Nn][Oo][Ww]$ ]]; then
     dbg "main(): change_start_date set to 'now', using current time."
-    change_start_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    change_start_date=$(date -u +"%Y-%m-%d %H:%M:%S")
     dbg "main(): change_start_date set from 'now' to current time: $change_start_date"
   fi
 
