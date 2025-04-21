@@ -583,6 +583,8 @@ main() {
   export DEBUG
   export DEBUG_PASS
 
+  echo "DEBUG: $DEBUG" >&2
+
   # debug output all passed parameters
     dbg "main(): All passed parameters:"
     dbg " ci_name: $ci_name"
