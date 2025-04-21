@@ -68,6 +68,10 @@ inputs:
   change_justification:
     description: 'Justification for the change (ServiceNow field: justification)'
     required: true
+  change_assigned_to:
+    description: 'User to assign the change to (ServiceNow field: assigned_to, defaults to current GitHub user)'
+    required: false
+    default: ${{ github.actor }}
   debug:
     description: Enable debug output
     required: false
@@ -122,6 +126,7 @@ runs:
         -t "${{ inputs.change_test_plan }}" \
         -j "${{ inputs.change_justification }}" \
         -y "${{ inputs.change_type }}" \
+        -O "${{ inputs.change_assigned_to }}" \
         -D "${{ inputs.debug }}")
 
         if [ "${{ inputs.debug }}" = "true" ]; then

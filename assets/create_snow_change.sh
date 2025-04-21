@@ -357,7 +357,7 @@ create_json_payload() {
   local ci_sys_id=""
   local additional_fields=""
 
-  while getopts "c:d:s:a:T:r:G:A:N:n:R:b:t:j:y:" opt; do
+  while getopts "c:d:s:a:T:r:G:A:N:n:O:R:b:t:j:y:" opt; do
     case "$opt" in
       c) ci_sys_id="$OPTARG" ;;
       d) description="$OPTARG" ;;
@@ -369,6 +369,7 @@ create_json_payload() {
       A) change_start_date="$OPTARG" ;;
       N) change_end_date="$OPTARG" ;;
       n) change_implementation_plan="$OPTARG" ;;
+      O) assigned_to="$OPTARG" ;;
       R) change_risk_impact_analysis="$OPTARG" ;;
       b) change_backout_plan="$OPTARG" ;;
       t) change_test_plan="$OPTARG" ;;
@@ -386,15 +387,16 @@ create_json_payload() {
   # this likely limits the use of this script to our internal environment, and even then, the differences between prod and nonprod servicenow may make that even more difficult.
   # TODO: after creating new function to marshall incoming variable for additional fields into k/v pairs to add here, remove x_kpmg3_pit_change_testing_signoff as a hard-coded field.
   # TODO: if -a arg for script and k/v pairs passed, then add a variable to the below creation of json_payload
+  # TODO: simplify JSON creation. create all without additional fields and without braces, then append additional fields if set, and add braces at the end.
   if [[ -n "${additional_fields}" ]]; then
     # if additional fields are set, add them to the JSON payload
     # $additional_fields will include prepended comma and space, so we can just append it to the JSON payload
     dbg "create_json_payload(): Additional fields are set: ${additional_fields}"
     
-    json_payload="{\"chg_model\": \"Standard\", \"description\": \"${description}\", \"short_description\": \"${short_description}\", \"cmdb_ci\": \"${ci_sys_id}\", \"type\": \"${change_type}\", \"category\": \"${change_category}\" , \"risk\": \"${change_risk}\" , \"assignment_group\": \"${change_group}\" , \"start_date\": \"${change_start_date}\" , \"end_date\": \"${change_end_date}\" , \"implementation_plan\": \"${change_implementation_plan}\" , \"risk_impact_analysis\": \"${change_risk_impact_analysis}\" , \"backout_plan\": \"${change_backout_plan}\" , \"test_plan\": \"${change_test_plan}\" , \"justification\": \"${change_justification}\"${additional_fields}}"
+    json_payload="{\"chg_model\": \"Standard\", \"description\": \"${description}\", \"short_description\": \"${short_description}\", \"cmdb_ci\": \"${ci_sys_id}\", \"type\": \"${change_type}\", \"category\": \"${change_category}\", \"risk\": \"${change_risk}\", \"assignment_group\": \"${change_group}\", \"start_date\": \"${change_start_date}\", \"end_date\": \"${change_end_date}\", \"implementation_plan\": \"${change_implementation_plan}\", \"risk_impact_analysis\": \"${change_risk_impact_analysis}\", \"backout_plan\": \"${change_backout_plan}\", \"test_plan\": \"${change_test_plan}\", \"assigned_to\": \"${assigned_to}\", \"justification\": \"${change_justification}\"${additional_fields}}"
   else
     dbg "create_json_payload(): No additional fields set."
-    json_payload="{\"chg_model\": \"Standard\", \"description\": \"${description}\", \"short_description\": \"${short_description}\", \"cmdb_ci\": \"${ci_sys_id}\", \"type\": \"Standard\", \"category\": \"${change_category}\" , \"risk\": \"${change_risk}\" , \"assignment_group\": \"${change_group}\" , \"start_date\": \"${change_start_date}\" , \"end_date\": \"${change_end_date}\" , \"implementation_plan\": \"${change_implementation_plan}\" , \"risk_impact_analysis\": \"${change_risk_impact_analysis}\" , \"backout_plan\": \"${change_backout_plan}\" , \"test_plan\": \"${change_test_plan}\" , \"justification\": \"${change_justification}\"}"
+    json_payload="{\"chg_model\": \"Standard\", \"description\": \"${description}\", \"short_description\": \"${short_description}\", \"cmdb_ci\": \"${ci_sys_id}\", \"type\": \"Standard\", \"category\": \"${change_category}\", \"risk\": \"${change_risk}\", \"assignment_group\": \"${change_group}\", \"start_date\": \"${change_start_date}\", \"end_date\": \"${change_end_date}\", \"implementation_plan\": \"${change_implementation_plan}\", \"risk_impact_analysis\": \"${change_risk_impact_analysis}\", \"backout_plan\": \"${change_backout_plan}\", \"test_plan\": \"${change_test_plan}\", \"assigned_to\": \"${assigned_to}\", \"justification\": \"${change_justification}\"}"
   fi
 
   dbg "create_json_payload(): json_payload: ${json_payload}"
@@ -539,8 +541,8 @@ main() {
   local change_backout_plan=""
   local change_test_plan=""
   local change_justification=""
-  local change_business_impact=""
   local change_type=""
+  local assigned_to=""
   # local token="" # need to remove in next update, replaced by BEARER_TOKEN for clarity
   local timeout="60" # default timeout value
   local oauth_endpoint="oauth_token.do"
@@ -552,31 +554,31 @@ main() {
   # ? DONE: (debug, not debug_pass). TODO: update debug/debug_pass to accept true/false, not just a flag, for use with action.yml and users setting DEBUG at runtime
   # TODO: remove DEBUG_PASS entirely?
 
-  while getopts ":c:l:d:s:a:u:p:C:S:o:r:D:P:T:r:G:A:N:n:R:b:t:j:y:" opt; do
+  while getopts ":c:l:d:s:a:u:p:C:S:o:O:r:D:P:T:r:G:A:N:n:R:b:t:j:y:" opt; do
     case "$opt" in
-      u) username="$OPTARG" ;;
-      p) password="$OPTARG" ;;
-      C) client_id="$OPTARG" ;;
-      S) client_secret="$OPTARG" ;;
-      c) ci_name="$OPTARG" ;;
-      l) sn_url="$OPTARG" ;;
-      o) timeout="$OPTARG" ;;
-      D) DEBUG="$OPTARG" ;;
-      P) DEBUG_PASS=true ;;
-      d) description="$OPTARG" ;;
-      s) short_description="$OPTARG" ;;
       a) additional_fields="$OPTARG" ;;
-      T) change_category="$OPTARG" ;;
-      r) change_risk="$OPTARG" ;;
-      G) change_group="$OPTARG" ;;
       A) change_start_date="$OPTARG" ;;
-      N) change_end_date="$OPTARG" ;;
-      n) change_implementation_plan="$OPTARG" ;;
-      R) change_risk_impact_analysis="$OPTARG" ;;
       b) change_backout_plan="$OPTARG" ;;
-      t) change_test_plan="$OPTARG" ;;
+      c) ci_name="$OPTARG" ;;
+      C) client_id="$OPTARG" ;;
+      d) description="$OPTARG" ;;
+      D) DEBUG="$OPTARG" ;;
+      G) change_group="$OPTARG" ;;
       j) change_justification="$OPTARG" ;;
-      #B) change_business_impact="$OPTARG" ;;
+      l) sn_url="$OPTARG" ;;
+      n) change_implementation_plan="$OPTARG" ;;
+      N) change_end_date="$OPTARG" ;;
+      o) timeout="$OPTARG" ;;
+      O) assigned_to="$OPTARG" ;;
+      p) password="$OPTARG" ;;
+      P) DEBUG_PASS=true ;;
+      r) change_risk="$OPTARG" ;;
+      R) change_risk_impact_analysis="$OPTARG" ;;
+      s) short_description="$OPTARG" ;;
+      S) client_secret="$OPTARG" ;;
+      t) change_test_plan="$OPTARG" ;;
+      T) change_category="$OPTARG" ;;
+      u) username="$OPTARG" ;;
       y) change_type="$OPTARG" ;;
       :) err "Option -$OPTARG requires an argument."; exit 1 ;;
       ?) err "Invalid option: -$OPTARG"; exit 1 ;;
@@ -604,6 +606,7 @@ main() {
     dbg " change_end_date: $change_end_date"
     dbg " change_implementation_plan: $change_implementation_plan"
     dbg " change_risk_impact_analysis: $change_risk_impact_analysis"
+    dbg " assigned_to: $assigned_to"
     dbg " change_backout_plan: $change_backout_plan"
     dbg " change_test_plan: $change_test_plan"
     dbg " change_justification: $change_justification"
