@@ -55,6 +55,7 @@ url_encode_string() {
 get_duration_timestamp() {
   # accepts string in format "1h30m" or "1h" or "30m"
   # returns timestamp in format "YYYY-MM-DD HH:MM:SS"
+  # ! TODO: pass in start_time to accurately calculate end time
 
   # validate input format
   if [[ ! $1 =~ ^([0-9]+[hH])?([0-9]+[mM])?$ ]]; then

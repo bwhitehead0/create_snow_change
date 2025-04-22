@@ -43,10 +43,12 @@ inputs:
     # ! check timezone for datetime submission, might need to perform conversion
     description: 'Start date of the change (ServiceNow field: start_date, format: "now", or YYYY-MM-DD HH:mm:ss)'
     required: false
+    default: "Now"
   change_end_date:
     # ! check timezone for datetime submission, might need to perform conversion
     description: 'End date of the change (ServiceNow field: end_date, format: 1h30m, 1h, 30m, or YYYY-MM-DD HH:mm:ss)'
     required: false
+    default: "1h"
   change_category:
     description: 'Category of the change (ServiceNow field: category, e.g., Application, Network, etc.)'
     required: true
