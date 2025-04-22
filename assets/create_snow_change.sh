@@ -55,7 +55,9 @@ url_encode_string() {
 get_duration_timestamp() {
   # accepts string in format "1h30m" or "1h" or "30m"
   # returns timestamp in format "YYYY-MM-DD HH:MM:SS"
-  # ! TODO: pass in start_time to accurately calculate end time
+  # TODO: pass in start_time to accurately calculate end time
+  # ? primary use for action is in automated workflows where start time is now, so this being set to current time is sufficient for now
+  # ? may need to update later for scheduled/queued workflows
 
   # validate input format
   if [[ ! $1 =~ ^([0-9]+[hH])?([0-9]+[mM])?$ ]]; then
@@ -401,7 +403,7 @@ create_json_payload() {
     json_payload="{\"chg_model\": \"Standard\", \"description\": \"${description}\", \"short_description\": \"${short_description}\", \"cmdb_ci\": \"${ci_sys_id}\", \"type\": \"${change_type}\", \"category\": \"${change_category}\", \"risk\": \"${change_risk}\", \"assignment_group\": \"${change_group}\", \"start_date\": \"${change_start_date}\", \"end_date\": \"${change_end_date}\", \"implementation_plan\": \"${change_implementation_plan}\", \"risk_impact_analysis\": \"${change_risk_impact_analysis}\", \"backout_plan\": \"${change_backout_plan}\", \"test_plan\": \"${change_test_plan}\", \"assigned_to\": \"${assigned_to}\", \"justification\": \"${change_justification}\"${additional_fields}}"
   else
     dbg "create_json_payload(): No additional fields set."
-    json_payload="{\"chg_model\": \"Standard\", \"description\": \"${description}\", \"short_description\": \"${short_description}\", \"cmdb_ci\": \"${ci_sys_id}\", \"type\": \"Standard\", \"category\": \"${change_category}\", \"risk\": \"${change_risk}\", \"assignment_group\": \"${change_group}\", \"start_date\": \"${change_start_date}\", \"end_date\": \"${change_end_date}\", \"implementation_plan\": \"${change_implementation_plan}\", \"risk_impact_analysis\": \"${change_risk_impact_analysis}\", \"backout_plan\": \"${change_backout_plan}\", \"test_plan\": \"${change_test_plan}\", \"assigned_to\": \"${assigned_to}\", \"justification\": \"${change_justification}\"}"
+    json_payload="{\"chg_model\": \"Standard\", \"description\": \"${description}\", \"short_description\": \"${short_description}\", \"cmdb_ci\": \"${ci_sys_id}\", \"type\": \"${change_type}\", \"category\": \"${change_category}\", \"risk\": \"${change_risk}\", \"assignment_group\": \"${change_group}\", \"start_date\": \"${change_start_date}\", \"end_date\": \"${change_end_date}\", \"implementation_plan\": \"${change_implementation_plan}\", \"risk_impact_analysis\": \"${change_risk_impact_analysis}\", \"backout_plan\": \"${change_backout_plan}\", \"test_plan\": \"${change_test_plan}\", \"assigned_to\": \"${assigned_to}\", \"justification\": \"${change_justification}\"}"
   fi
 
   dbg "create_json_payload(): json_payload: ${json_payload}"
@@ -559,7 +561,7 @@ main() {
   # ? DONE: (debug, not debug_pass). TODO: update debug/debug_pass to accept true/false, not just a flag, for use with action.yml and users setting DEBUG at runtime
   # TODO: remove DEBUG_PASS entirely?
 
-  while getopts ":c:l:d:s:a:u:p:C:S:o:O:r:D:P:T:r:G:A:N:n:R:b:t:j:y:" opt; do
+  while getopts ":c:l:d:s:a:u:p:C:S:o:O:D:P:T:r:G:A:N:n:R:b:t:j:y:" opt; do
     case "$opt" in
       a) additional_fields="$OPTARG" ;;
       A) change_start_date="$OPTARG" ;;
@@ -718,6 +720,7 @@ main() {
     -A "${change_start_date}" \
     -N "${change_end_date}" \
     -n "${change_implementation_plan}" \
+    -r "${change_risk}" \
     -R "${change_risk_impact_analysis}" \
     -b "${change_backout_plan}" \
     -t "${change_test_plan}" \
