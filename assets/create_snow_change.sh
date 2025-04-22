@@ -396,14 +396,16 @@ create_json_payload() {
   # TODO: if -a arg for script and k/v pairs passed, then add a variable to the below creation of json_payload
   # TODO: simplify JSON creation. create all without additional fields and without braces, then append additional fields if set, and add braces at the end.
   if [[ -n "${additional_fields}" ]]; then
+    # \"chg_model\": \"Standard\", 
     # if additional fields are set, add them to the JSON payload
     # $additional_fields will include prepended comma and space, so we can just append it to the JSON payload
     dbg "create_json_payload(): Additional fields are set: ${additional_fields}"
     
-    json_payload="{\"chg_model\": \"Standard\", \"description\": \"${description}\", \"short_description\": \"${short_description}\", \"cmdb_ci\": \"${ci_sys_id}\", \"type\": \"${change_type}\", \"category\": \"${change_category}\", \"risk\": \"${change_risk}\", \"assignment_group\": \"${change_group}\", \"start_date\": \"${change_start_date}\", \"end_date\": \"${change_end_date}\", \"implementation_plan\": \"${change_implementation_plan}\", \"risk_impact_analysis\": \"${change_risk_impact_analysis}\", \"backout_plan\": \"${change_backout_plan}\", \"test_plan\": \"${change_test_plan}\", \"assigned_to\": \"${assigned_to}\", \"justification\": \"${change_justification}\"${additional_fields}}"
+    json_payload="{\"description\": \"${description}\", \"short_description\": \"${short_description}\", \"cmdb_ci\": \"${ci_sys_id}\", \"type\": \"${change_type}\", \"category\": \"${change_category}\", \"risk\": \"${change_risk}\", \"assignment_group\": \"${change_group}\", \"start_date\": \"${change_start_date}\", \"end_date\": \"${change_end_date}\", \"implementation_plan\": \"${change_implementation_plan}\", \"risk_impact_analysis\": \"${change_risk_impact_analysis}\", \"backout_plan\": \"${change_backout_plan}\", \"test_plan\": \"${change_test_plan}\", \"assigned_to\": \"${assigned_to}\", \"justification\": \"${change_justification}\"${additional_fields}}"
   else
+    # \"chg_model\": \"Standard\", 
     dbg "create_json_payload(): No additional fields set."
-    json_payload="{\"chg_model\": \"Standard\", \"description\": \"${description}\", \"short_description\": \"${short_description}\", \"cmdb_ci\": \"${ci_sys_id}\", \"type\": \"${change_type}\", \"category\": \"${change_category}\", \"risk\": \"${change_risk}\", \"assignment_group\": \"${change_group}\", \"start_date\": \"${change_start_date}\", \"end_date\": \"${change_end_date}\", \"implementation_plan\": \"${change_implementation_plan}\", \"risk_impact_analysis\": \"${change_risk_impact_analysis}\", \"backout_plan\": \"${change_backout_plan}\", \"test_plan\": \"${change_test_plan}\", \"assigned_to\": \"${assigned_to}\", \"justification\": \"${change_justification}\"}"
+    json_payload="{\"description\": \"${description}\", \"short_description\": \"${short_description}\", \"cmdb_ci\": \"${ci_sys_id}\", \"type\": \"${change_type}\", \"category\": \"${change_category}\", \"risk\": \"${change_risk}\", \"assignment_group\": \"${change_group}\", \"start_date\": \"${change_start_date}\", \"end_date\": \"${change_end_date}\", \"implementation_plan\": \"${change_implementation_plan}\", \"risk_impact_analysis\": \"${change_risk_impact_analysis}\", \"backout_plan\": \"${change_backout_plan}\", \"test_plan\": \"${change_test_plan}\", \"assigned_to\": \"${assigned_to}\", \"justification\": \"${change_justification}\"}"
   fi
 
   dbg "create_json_payload(): json_payload: ${json_payload}"
