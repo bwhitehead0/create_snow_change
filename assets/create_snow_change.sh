@@ -63,13 +63,17 @@ get_duration_timestamp() {
     exit 1
   fi
   local duration=$1
-  local hours=${duration%%h*}
-  local minutes=${duration##*h}
-  minutes=${minutes%m}
+  local hours=0
+  local minutes=0
 
-  # Default to 0 if not provided
-  hours=${hours:-0}
-  minutes=${minutes:-0}
+  if [[ "$duration" == *h* ]]; then
+    hours=${duration%%h*}
+  fi
+
+  if [[ "$duration" == *m* ]]; then
+    minutes=${duration##*h}
+  fi
+  minutes=${minutes%m}
 
   # duration_timestamp=$(date -d "+${hours} hours +${minutes} minutes" "+%Y-%m-%d %H:%M:%S")
   # Use UTC format
