@@ -396,6 +396,7 @@ create_json_payload() {
   # TODO: if -a arg for script and k/v pairs passed, then add a variable to the below creation of json_payload
   # TODO: simplify JSON creation. create all without additional fields and without braces, then append additional fields if set, and add braces at the end.
   if [[ -n "${additional_fields}" ]]; then
+    # removing chg_model for now, but we'll want to re-add later
     # \"chg_model\": \"Standard\", 
     # if additional fields are set, add them to the JSON payload
     # $additional_fields will include prepended comma and space, so we can just append it to the JSON payload
@@ -476,7 +477,8 @@ create_chg() {
 
   # build URL
   # break up here so we can add logic around pieces of the API call as needed in the future
-  local API_ENDPOINT="/api/sn_chg_rest/v1/change"
+  # local API_ENDPOINT="/api/sn_chg_rest/v1/change"
+  local API_ENDPOINT="/api/now/table/change_request"
   local URL="${sn_url}${API_ENDPOINT}"
 
 

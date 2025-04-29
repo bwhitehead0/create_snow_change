@@ -71,7 +71,7 @@ inputs:
     description: 'Justification for the change (ServiceNow field: justification)'
     required: true
   change_assigned_to:
-    description: 'User to assign the change to (ServiceNow field: assigned_to, full email)'
+    description: 'User to assign the change to (ServiceNow field: assigned_to, full name in ServiceNow, e.g., "John Doe")'
     required: false
   debug:
     description: Enable debug output
