@@ -531,7 +531,6 @@ create_chg() {
 # primary function to grab all passed parameters and call other functions
 main() {
   # ! data such as tag, environment, etc should all exist outside of this script. any references passed in should be validated in the workflow, and addressed in description/short_description only.
-  # ! -r not working - likely an issue with the 'sysparm_fields' parameter in the API call
   dbg "main(): All passed parameters (\$*): $*"
 
   local ci_name=""
@@ -563,7 +562,7 @@ main() {
   local BEARER_TOKEN=""
   DEBUG=false
   DEBUG_PASS=false
-  # ? DONE: (debug, not debug_pass). TODO: update debug/debug_pass to accept true/false, not just a flag, for use with action.yml and users setting DEBUG at runtime
+  
   # TODO: remove DEBUG_PASS entirely?
 
   while getopts ":c:l:d:s:a:u:p:C:S:o:O:D:P:T:r:G:A:N:n:R:b:t:j:y:" opt; do
@@ -598,7 +597,7 @@ main() {
     esac
   done
 
-  DEBUG=true
+  # DEBUG=true
   # set DEBUG and DEBUG_PASS as environment variables
   export DEBUG
   export DEBUG_PASS
