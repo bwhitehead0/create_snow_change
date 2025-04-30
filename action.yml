@@ -23,7 +23,6 @@ inputs:
     required: true
   # ? possible for future, add category. possible values: Accessory Application Computer Database Facility Mobile Device Network Printer Server Storage Other DevOps, maybe others? back end script should default to 'Application' for now
   change_type:
-    # TODO: implement in script
     description: Type of change (Normal, Emergency, Standard)
     required: false
   change_title:
@@ -32,33 +31,52 @@ inputs:
   change_description:
     description: 'Description of the change (ServiceNow field: description)'
     required: true
-  change_impact:
-    # TODO: implement in script
-    description: Impact of the change (High, Medium, Low)
-    required: false
   change_risk:
-    # TODO: implement in script
     description: Risk level of the change (High, Medium, Low)
+    required: false
+  additional_fields:
+    # string of k/v pairs in format of "key=value|key=value|key=value|key=value"
+    # ? should we just accept JSON? might be difficult for some users
+    description: 'Additional fields to set on the change ticket (optional, format: "key, value|key, value|key, value|key, value")'
+    required: false
+  change_start_date:
+    # ! check timezone for datetime submission, might need to perform conversion
+    description: 'Start date of the change (ServiceNow field: start_date, format: "now", or YYYY-MM-DD HH:mm:ss)'
+    required: false
+    default: "Now"
+  change_end_date:
+    # ! check timezone for datetime submission, might need to perform conversion
+    description: 'End date of the change (ServiceNow field: end_date, format: 1h30m, 1h, 30m, or YYYY-MM-DD HH:mm:ss)'
+    required: false
+    default: "1h"
+  change_category:
+    description: 'Category of the change (ServiceNow field: category, e.g., Application, Network, etc.)'
+    required: true
+  change_group:
+    description: 'Group to assign the change to (ServiceNow field: assignment_group, e.g., DevOps, IT Support, etc.)'
+    required: true
+  change_implementation_plan:
+    description: 'Implementation plan for the change (ServiceNow field: implementation_plan)'
+    required: true
+  change_risk_impact_analysis:
+    description: 'Risk and impact analysis for the change (ServiceNow field: risk_impact_analysis)'
+    required: true
+  change_backout_plan:
+    description: 'Backout plan for the change (ServiceNow field: backout_plan)'
+    required: true
+  change_test_plan:
+    description: 'Test plan for the change (ServiceNow field: test_plan)'
+    required: true
+  change_justification:
+    description: 'Justification for the change (ServiceNow field: justification)'
+    required: true
+  change_assigned_to:
+    description: 'User to assign the change to (ServiceNow field: assigned_to, full name in ServiceNow, e.g., "John Doe")'
     required: false
   debug:
     description: Enable debug output
     required: false
     default: "false"
-  # change_schedule_start:
-  #   # seems to follow format yyyy-MM-dd'T'HH:mm:ssZ?
-  #   # in script, set default to now + 30sec? in future, add to input from action and workflow_dispatch inputs?
-  #   description: Scheduled start date and time for the change (YYYY-MM-DD HH:mm:ss)
-  #   required: false
-  # change_schedule_end:
-  #   # seems to follow format yyyy-MM-dd'T'HH:mm:ssZ?
-  #   # in script, set default to now + 30sec? in future, add to input from action and workflow_dispatch inputs?
-  #   description: Scheduled end date and time for the change (YYYY-MM-DD HH:mm:ss)
-  #   required: false
-  change_assigned_to:
-    # TODO: implement in script
-    description: User to assign the change to (defaults to current GitHub user)
-    required: false
-    default: ${{ github.actor }}
   snow_timeout:
     description: "Timeout for ServiceNow API call (default: 60)"
     required: false
@@ -80,6 +98,8 @@ runs:
       id: create_change
       # TODO: add optional/TBD inputs
       # TODO: update debug and regular output for efficiency, set to variable once and output values instead of performing same command multiple times
+      # TODO: accept '-a' for additional fields, receiving a string of k/v pairs in format of "key, value|key, value|key, value|key, value"
+      # ? confirm structure of string variable to be parsed into actual k/v pairs
       run: |
         response=$(${{ github.action_path }}/assets/create_snow_change.sh \
         -c "${{ inputs.snow_ci }}" \
@@ -91,15 +111,31 @@ runs:
         -o "${{ inputs.snow_timeout }}" \
         -C "${{ inputs.snow_client_id }}" \
         -S "${{ inputs.snow_client_secret }}" \
+        -a "${{ inputs.additional_fields }}" \
+        -T "${{ inputs.change_category }}" \
+        -r "${{ inputs.change_risk }}" \
+        -G "${{ inputs.change_group }}" \
+        -A "${{ inputs.change_start_date }}" \
+        -N "${{ inputs.change_end_date }}" \
+        -n "${{ inputs.change_implementation_plan }}" \
+        -R "${{ inputs.change_risk_impact_analysis }}" \
+        -b "${{ inputs.change_backout_plan }}" \
+        -t "${{ inputs.change_test_plan }}" \
+        -j "${{ inputs.change_justification }}" \
+        -y "${{ inputs.change_type }}" \
+        -O "${{ inputs.change_assigned_to }}" \
         -D "${{ inputs.debug }}")
 
+        change_ticket_sys_id=$(printf '%s' $response | jq -r '.result.sys_id')
+        change_ticket_number=$(printf '%s' $response | jq -r '.result.number')
+
         if [ "${{ inputs.debug }}" = "true" ]; then
-          echo "change_ticket_sys_id=$(printf '%s' $response | jq -r '.result.sys_id.value')"
-          echo "change_ticket_number=$(printf '%s' $response | jq -r '.result.number.value')"
+          echo "change_ticket_sys_id=$change_ticket_sys_id"
+          echo "change_ticket_number=$change_ticket_number"
         fi
 
-        echo "change_ticket_sys_id=$(printf '%s' $response | jq -r '.result.sys_id.value')" >> $GITHUB_OUTPUT
-        echo "change_ticket_number=$(printf '%s' $response | jq -r '.result.number.value')" >> $GITHUB_OUTPUT
+        echo "change_ticket_sys_id=$change_ticket_sys_id" >> $GITHUB_OUTPUT
+        echo "change_ticket_number=$change_ticket_number" >> $GITHUB_OUTPUT
         printf '%s' "response=$response" >> $GITHUB_OUTPUT
 
       shell: bash

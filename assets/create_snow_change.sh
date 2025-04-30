@@ -8,13 +8,13 @@ DEBUG=false
 # error output function
 err() {
   # date format year-month-day hour:minute:second.millisecond+timezone - requires coreutils date
-    printf '%s' "$(date +'%Y-%m-%dT%H:%M:%S.%3N%z') - Error - $1" >&2
+    printf '%s\n' "$(date +'%Y-%m-%dT%H:%M:%S.%3N%z') - Error - $1" >&2
 }
 
 dbg() {
   # date format year-month-day hour:minute:second.millisecond+timezone - requires coreutils date
   if [[ "$DEBUG" == true ]]; then
-    printf '%s' "$(date +'%Y-%m-%dT%H:%M:%S.%3N%z') - Debug - $1" >&2
+    printf '%s\n' "$(date +'%Y-%m-%dT%H:%M:%S.%3N%z') - Debug - $1" >&2
   fi
 }
 
@@ -49,6 +49,39 @@ url_encode_string() {
     done
     dbg "url_encode_string(): Encoded string: $output"
     echo "$output"
+}
+
+# calculate duration timestamp for change end date
+get_duration_timestamp() {
+  # accepts string in format "1h30m" or "1h" or "30m"
+  # returns timestamp in format "YYYY-MM-DD HH:MM:SS"
+  # TODO: pass in start_time to accurately calculate end time
+  # ? primary use for action is in automated workflows where start time is now, so this being set to current time is sufficient for now
+  # ? may need to update later for scheduled/queued workflows
+
+  # validate input format
+  if [[ ! $1 =~ ^([0-9]+[hH])?([0-9]+[mM])?$ ]]; then
+    err "get_duration_timestamp(): Invalid duration format. Use '1h30m', '1h', or '30m'."
+    exit 1
+  fi
+  local duration=$1
+  local hours=0
+  local minutes=0
+
+  if [[ "$duration" == *h* ]]; then
+    hours=${duration%%h*}
+  fi
+
+  if [[ "$duration" == *m* ]]; then
+    minutes=${duration##*h}
+  fi
+  minutes=${minutes%m}
+
+  # duration_timestamp=$(date -d "+${hours} hours +${minutes} minutes" "+%Y-%m-%d %H:%M:%S")
+  # Use UTC format
+  duration_timestamp=$(date -u -d "+${hours} hours +${minutes} minutes" "+%Y-%m-%d %H:%M:%S")
+
+  echo "$duration_timestamp"
 }
 
 token_auth() {
@@ -252,6 +285,76 @@ get_ci_sys_id() {
   fi
 }
 
+# validate additional fields
+validate_additional_fields() {
+  # TODO
+  # additional fields should come thru as a string, with '|' delimiter, in format of key=value|key=value|key=value
+  # if contains '|', split, validate format (key=value), validate key=value format for all results from split
+  # key should contain alphanum and underscores, value should be > 0 characters
+  # use nested function(s): test_kv_pair()
+  # if contains '|', split on '|' into an array, then validate each array, call test_kv_pair() for each pair
+
+  test_kv_pair() {
+    # tests if key=value format is valid
+    # regex for alphanum and underscore on left side of '=', any characters on right side
+    if [[ "$1" =~ ^[a-zA-Z0-9_]+=.+$ ]]; then
+      # key is valid, and value exists and not empty string
+      echo "true"
+    else
+      echo "false"
+    fi
+  }
+
+  # TODO: optimize this, removing the if statement and just using IFS... will still populate fields array properly if it's just a single k/v pair
+  if echo "${1}" | grep '|' > /dev/null; then
+    # check for multiple key/value pairs
+    IFS='|' read -r -a fields <<< "${1}"
+    for field in "${fields[@]}"; do
+      # iterate thru each key/value pair and validate key and value
+      kv_result=$(test_kv_pair "${field}")
+      if [[ "$kv_result" == false ]]; then
+        err "validate_additional_fields(): Invalid additional fields key/value format: ${field}"
+      else
+        if [[ "$DEBUG" == true ]]; then
+          dbg "validate_additional_fields(): Valid additional fields key/value format: ${field}"
+        fi
+      fi
+    done
+  else
+    # single key/value pair
+    kv_result=$(test_kv_pair "${field}")
+    if [[ "$kv_result" == false ]]; then
+      # found an invalid key or value. should be optimized to catch all bad k/v pairs but for now catching the first failure is sufficient
+      err "validate_additional_fields(): Invalid additional fields key/value format: ${field}"
+      exit 1
+    else
+      if [[ "$DEBUG" == true ]]; then
+        dbg "validate_additional_fields(): Valid additional fields key/value format: ${field}"
+      fi
+    fi
+  fi
+
+  # this should only reach this point if all keys are valid
+  # comment out for now, as this is not needed in the current implementation
+  # echo "${kv_result}"
+}
+
+# marshall additional fields
+marshall_additional_fields() {
+  # take in string, split into JSON without brackets
+  local json_fields=""
+  IFS='|' read -r -a fields <<< "${1}"
+    for field in "${fields[@]}"; do
+      # iterate thru each key/value pair and convert to JSON format
+      # split on '=' to get key and value
+      # prepend with comma and space for JSON formatting, will be dropped into final JSON payload at the end
+      IFS='=' read -r key value <<< "${field}"
+      json_fields+=", \"${key}\": \"${value}\""
+    done
+  dbg "marshall_additional_fields(): json_fields: ${json_fields}"
+  echo "${json_fields}"
+}
+
 # create JSON payload
 create_json_payload() {
   local OPTIND=1 # reset OPTIND so getopts starts at 1 and parameters are parsed correctly
@@ -259,20 +362,52 @@ create_json_payload() {
   local description=""
   local short_description=""
   local ci_sys_id=""
+  local additional_fields=""
 
-  while getopts "c:d:s:" opt; do
+  while getopts "c:d:s:a:T:r:G:A:N:n:O:R:b:t:j:y:" opt; do
     case "$opt" in
       c) ci_sys_id="$OPTARG" ;;
       d) description="$OPTARG" ;;
       s) short_description="$OPTARG" ;;
+      a) additional_fields="$OPTARG" ;;
+      T) change_category="$OPTARG" ;;
+      r) change_risk="$OPTARG" ;;
+      G) change_group="$OPTARG" ;;
+      A) change_start_date="$OPTARG" ;;
+      N) change_end_date="$OPTARG" ;;
+      n) change_implementation_plan="$OPTARG" ;;
+      O) assigned_to="$OPTARG" ;;
+      R) change_risk_impact_analysis="$OPTARG" ;;
+      b) change_backout_plan="$OPTARG" ;;
+      t) change_test_plan="$OPTARG" ;;
+      j) change_justification="$OPTARG" ;;
+      #B) change_business_impact="$OPTARG" ;;
+      y) change_type="$OPTARG" ;;
       *) err "Invalid option: -$OPTARG"; exit 1 ;;
     esac
   done
 
+  dbg "create_json_payload(): additional_fields: ${additional_fields}"
+
   # create JSON payload
-  # this needs to be way more dynamic - chg_model, x_kpmg3_pit_change_testing_signoff shouldn't be hardcoded, and x_kpmg3_pit_change_testing_signoff looks like a custom field anyway.
+  # ! this needs to be way more dynamic - chg_model, x_kpmg3_pit_change_testing_signoff shouldn't be hardcoded, and x_kpmg3_pit_change_testing_signoff looks like a custom field anyway [this is done via additional_fields now].
   # this likely limits the use of this script to our internal environment, and even then, the differences between prod and nonprod servicenow may make that even more difficult.
-  json_payload="{\"chg_model\": \"Standard\", \"description\": \"${description}\", \"short_description\": \"${short_description}\", \"cmdb_ci\": \"${ci_sys_id}\", \"type\": \"Standard\", \"x_kpmg3_pit_change_testing_signoff\": \"PreProd Change\"}"
+  # TODO: after creating new function to marshall incoming variable for additional fields into k/v pairs to add here, remove x_kpmg3_pit_change_testing_signoff as a hard-coded field.
+  # TODO: if -a arg for script and k/v pairs passed, then add a variable to the below creation of json_payload
+  # TODO: simplify JSON creation. create all without additional fields and without braces, then append additional fields if set, and add braces at the end.
+  if [[ -n "${additional_fields}" ]]; then
+    # removing chg_model for now, but we'll want to re-add later
+    # \"chg_model\": \"Standard\", 
+    # if additional fields are set, add them to the JSON payload
+    # $additional_fields will include prepended comma and space, so we can just append it to the JSON payload
+    dbg "create_json_payload(): Additional fields are set: ${additional_fields}"
+    
+    json_payload="{\"description\": \"${description}\", \"short_description\": \"${short_description}\", \"cmdb_ci\": \"${ci_sys_id}\", \"type\": \"${change_type}\", \"category\": \"${change_category}\", \"risk\": \"${change_risk}\", \"assignment_group\": \"${change_group}\", \"start_date\": \"${change_start_date}\", \"end_date\": \"${change_end_date}\", \"implementation_plan\": \"${change_implementation_plan}\", \"risk_impact_analysis\": \"${change_risk_impact_analysis}\", \"backout_plan\": \"${change_backout_plan}\", \"test_plan\": \"${change_test_plan}\", \"assigned_to\": \"${assigned_to}\", \"justification\": \"${change_justification}\"${additional_fields}}"
+  else
+    # \"chg_model\": \"Standard\", 
+    dbg "create_json_payload(): No additional fields set."
+    json_payload="{\"description\": \"${description}\", \"short_description\": \"${short_description}\", \"cmdb_ci\": \"${ci_sys_id}\", \"type\": \"${change_type}\", \"category\": \"${change_category}\", \"risk\": \"${change_risk}\", \"assignment_group\": \"${change_group}\", \"start_date\": \"${change_start_date}\", \"end_date\": \"${change_end_date}\", \"implementation_plan\": \"${change_implementation_plan}\", \"risk_impact_analysis\": \"${change_risk_impact_analysis}\", \"backout_plan\": \"${change_backout_plan}\", \"test_plan\": \"${change_test_plan}\", \"assigned_to\": \"${assigned_to}\", \"justification\": \"${change_justification}\"}"
+  fi
 
   dbg "create_json_payload(): json_payload: ${json_payload}"
 
@@ -342,7 +477,8 @@ create_chg() {
 
   # build URL
   # break up here so we can add logic around pieces of the API call as needed in the future
-  local API_ENDPOINT="/api/sn_chg_rest/v1/change"
+  # local API_ENDPOINT="/api/sn_chg_rest/v1/change"
+  local API_ENDPOINT="/api/now/table/change_request"
   local URL="${sn_url}${API_ENDPOINT}"
 
 
@@ -394,7 +530,6 @@ create_chg() {
 # primary function to grab all passed parameters and call other functions
 main() {
   # ! data such as tag, environment, etc should all exist outside of this script. any references passed in should be validated in the workflow, and addressed in description/short_description only.
-  # ! -r not working - likely an issue with the 'sysparm_fields' parameter in the API call
   dbg "main(): All passed parameters (\$*): $*"
 
   local ci_name=""
@@ -402,8 +537,22 @@ main() {
   local sn_url=""
   local description=""
   local short_description=""
+  local additional_fields=""
   local username=""
   local password=""
+  local marshalled_fields=""
+  local change_category=""
+  local change_risk=""
+  local change_group=""
+  local change_start_date=""
+  local change_end_date=""
+  local change_implementation_plan=""
+  local change_risk_impact_analysis=""
+  local change_backout_plan=""
+  local change_test_plan=""
+  local change_justification=""
+  local change_type=""
+  local assigned_to=""
   # local token="" # need to remove in next update, replaced by BEARER_TOKEN for clarity
   local timeout="60" # default timeout value
   local oauth_endpoint="oauth_token.do"
@@ -412,31 +561,47 @@ main() {
   local BEARER_TOKEN=""
   DEBUG=false
   DEBUG_PASS=false
-  # ? DONE: (debug, not debug_pass). TODO: update debug/debug_pass to accept true/false, not just a flag, for use with action.yml and users setting DEBUG at runtime
+  
   # TODO: remove DEBUG_PASS entirely?
 
-  while getopts ":c:l:d:s:u:p:C:S:o:r:D:P" opt; do
+  while getopts ":c:l:d:s:a:u:p:C:S:o:O:D:P:T:r:G:A:N:n:R:b:t:j:y:" opt; do
     case "$opt" in
-      u) username="$OPTARG" ;;
-      p) password="$OPTARG" ;;
-      C) client_id="$OPTARG" ;;
-      S) client_secret="$OPTARG" ;;
+      a) additional_fields="$OPTARG" ;;
+      A) change_start_date="$OPTARG" ;;
+      b) change_backout_plan="$OPTARG" ;;
       c) ci_name="$OPTARG" ;;
-      l) sn_url="$OPTARG" ;;
-      o) timeout="$OPTARG" ;;
-      D) DEBUG="$OPTARG" ;;
-      P) DEBUG_PASS=true ;;
+      C) client_id="$OPTARG" ;;
       d) description="$OPTARG" ;;
+      D) DEBUG="$OPTARG" ;;
+      G) change_group="$OPTARG" ;;
+      j) change_justification="$OPTARG" ;;
+      l) sn_url="$OPTARG" ;;
+      n) change_implementation_plan="$OPTARG" ;;
+      N) change_end_date="$OPTARG" ;;
+      o) timeout="$OPTARG" ;;
+      O) assigned_to="$OPTARG" ;;
+      p) password="$OPTARG" ;;
+      P) DEBUG_PASS=true ;;
+      r) change_risk="$OPTARG" ;;
+      R) change_risk_impact_analysis="$OPTARG" ;;
       s) short_description="$OPTARG" ;;
+      S) client_secret="$OPTARG" ;;
+      t) change_test_plan="$OPTARG" ;;
+      T) change_category="$OPTARG" ;;
+      u) username="$OPTARG" ;;
+      y) change_type="$OPTARG" ;;
       :) err "Option -$OPTARG requires an argument."; exit 1 ;;
       ?) err "Invalid option: -$OPTARG"; exit 1 ;;
       *) err "Invalid option: -$OPTARG"; exit 1 ;;
     esac
   done
 
+  # DEBUG=true
   # set DEBUG and DEBUG_PASS as environment variables
   export DEBUG
   export DEBUG_PASS
+
+  echo "DEBUG: $DEBUG" >&2
 
   # debug output all passed parameters
     dbg "main(): All passed parameters:"
@@ -444,6 +609,20 @@ main() {
     dbg " sn_url: $sn_url"
     dbg " description: $description"
     dbg " short_description: $short_description"
+    dbg " change_category: $change_category"
+    dbg " change_risk: $change_risk"
+    dbg " change_group: $change_group"
+    dbg " change_start_date: $change_start_date"
+    dbg " change_end_date: $change_end_date"
+    dbg " change_implementation_plan: $change_implementation_plan"
+    dbg " change_risk_impact_analysis: $change_risk_impact_analysis"
+    dbg " assigned_to: $assigned_to"
+    dbg " change_backout_plan: $change_backout_plan"
+    dbg " change_test_plan: $change_test_plan"
+    dbg " change_justification: $change_justification"
+    #dbg " change_business_impact: $change_business_impact"
+    dbg " change_type: $change_type"
+    dbg " additional_fields: $additional_fields"
     dbg " username: $username"
     if [[ "$DEBUG_PASS" == true ]]; then
       dbg " password: $password"
@@ -477,6 +656,39 @@ main() {
     exit 1
   fi
 
+  # validate additional fields if set
+  if [[ -n "$additional_fields" ]]; then
+    dbg "main(): Validating additional fields: $additional_fields"
+    # validate additional fields (will exit 1 if invalid)
+    validate_additional_fields "$additional_fields"
+    # marshall additional fields into JSON format
+    marshalled_fields=$(marshall_additional_fields "$additional_fields")
+  fi
+
+  # ! validate behavior of timestamps interacting with servicnow. timezone, etc, may need to be adjusted to UTC
+
+  # calculate start time if input is 'now'
+  if [[ "$change_start_date" =~ ^[Nn][Oo][Ww]$ ]]; then
+    dbg "main(): change_start_date set to 'now', using current time."
+    change_start_date=$(date -u +"%Y-%m-%d %H:%M:%S")
+    dbg "main(): change_start_date set from 'now' to current time: $change_start_date"
+  fi
+
+  # calculate end time if input is valid duration or timestamp
+  # TODO: accept 24hr time ie 14:45 for 2:45 PM, check not in past, and use same date + specified time
+  # TODO: add some additional validation for BOTH dates, year is current year or next year & < 1min in future (or is that overkill?)
+  # TODO: !! allow timestamp without seconds, ie 2023-10-01 14:45, and convert to full timestamp with seconds
+  if [[ "$change_end_date" =~ ^([0-9]+[hH])?([0-9]+[mM])?$ ]]; then
+    change_end_date=$(get_duration_timestamp "$change_end_date")
+    dbg "main(): change_end_date set from duration to: $change_end_date"
+  elif [[ "$change_end_date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
+    # if change_end_date is a valid timestamp, do nothing
+    dbg "main(): change_end_date is a valid timestamp: $change_end_date"
+  else
+    err "main(): Invalid change_end_date format. Use '1h30m', '1h', '30m', or 'YYYY-MM-DD hh:mm:ss'."
+    exit 1
+  fi
+
   # normalize sn_url. remove trailing slash if present
   sn_url=$(echo "$sn_url" | sed 's/\/$//')
 
@@ -499,7 +711,27 @@ main() {
   
 
   ci_sys_id=$(get_ci_sys_id -c "$ci_name" -l "${sn_url}" -u "${username}" -p "${password}" -t "${BEARER_TOKEN}") # done
-  json_payload=$(create_json_payload -c "${ci_sys_id}" -d "${description}" -s "${short_description}") # done
+
+  dbg "main(): marshalled_fields: ${marshalled_fields}"
+  # json_payload=$(create_json_payload -c "${ci_sys_id}" -d "${description}" -s "${short_description}" -a "${marshalled_fields}") # done
+  json_payload=$(create_json_payload -c "${ci_sys_id}" \
+    -d "${description}" \
+    -s "${short_description}" \
+    -T "${change_category}" \
+    -r "${change_risk}" \
+    -G "${change_group}" \
+    -A "${change_start_date}" \
+    -N "${change_end_date}" \
+    -n "${change_implementation_plan}" \
+    -r "${change_risk}" \
+    -R "${change_risk_impact_analysis}" \
+    -b "${change_backout_plan}" \
+    -t "${change_test_plan}" \
+    -j "${change_justification}" \
+    -y "${change_type}" \
+    -a "${marshalled_fields}") # done
+    #-B "${change_business_impact}" \
+
 
   # ? might need to dump this to variable(s) and evaluate, use `printf '%s'` to output the actual JSON payload, and trigger logic based on HTTP response code
   create_chg -j "${json_payload}" -l "${sn_url}" -u "${username}" -p "${password}" -o "${timeout}" -t "${BEARER_TOKEN}" # done
