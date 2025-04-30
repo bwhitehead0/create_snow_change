@@ -126,13 +126,16 @@ runs:
         -O "${{ inputs.change_assigned_to }}" \
         -D "${{ inputs.debug }}")
 
+        change_ticket_sys_id=$(printf '%s' $response | jq -r '.result.sys_id')
+        change_ticket_number=$(printf '%s' $response | jq -r '.result.number')
+
         if [ "${{ inputs.debug }}" = "true" ]; then
-          echo "change_ticket_sys_id=$(printf '%s' $response | jq -r '.result.sys_id.value')"
-          echo "change_ticket_number=$(printf '%s' $response | jq -r '.result.number.value')"
+          echo "change_ticket_sys_id=$change_ticket_sys_id"
+          echo "change_ticket_number=$change_ticket_number"
         fi
 
-        echo "change_ticket_sys_id=$(printf '%s' $response | jq -r '.result.sys_id.value')" >> $GITHUB_OUTPUT
-        echo "change_ticket_number=$(printf '%s' $response | jq -r '.result.number.value')" >> $GITHUB_OUTPUT
+        echo "change_ticket_sys_id=$change_ticket_sys_id" >> $GITHUB_OUTPUT
+        echo "change_ticket_number=$change_ticket_number" >> $GITHUB_OUTPUT
         printf '%s' "response=$response" >> $GITHUB_OUTPUT
 
       shell: bash
