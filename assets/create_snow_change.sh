@@ -8,8 +8,7 @@ DEBUG=false
 # error output function
 err() {
   # date format year-month-day hour:minute:second.millisecond+timezone - requires coreutils date
-    printf '%s' "$(date +'%Y-%m-%dT%H:%M:%S.%3N%z') - Error - $1" >&2
-    echo "\n"
+    printf '%s\n' "$(date +'%Y-%m-%dT%H:%M:%S.%3N%z') - Error - $1" >&2
 }
 
 dbg() {
