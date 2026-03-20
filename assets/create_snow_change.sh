@@ -233,7 +233,7 @@ get_ci_sys_id() {
     exit 1
   fi
 
-  if [[ ( -z "$username" && -z "$password" ) || -z "$token" ]]; then
+  if [[ ( -z "$username" || -z "$password" ) && -z "$token" ]]; then
     err "get_ci_sys_id(): Missing required parameter: either username + password or token."
     exit 1
   fi
@@ -490,7 +490,7 @@ create_chg() {
     exit 1
   fi
 
-  if [[ ( -z "$username" && -z "$password" ) || -z "$token" ]]; then
+  if [[ ( -z "$username" || -z "$password" ) && -z "$token" ]]; then
     err "create_chg(): Missing required parameter(s): either username + password or token."
     exit 1
   fi
