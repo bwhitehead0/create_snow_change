@@ -57,6 +57,7 @@ jobs:
 * `change_test_plan`: Test plan for the change (ServiceNow field: test_plan). **Required**.
 * `change_justification`: Justification for the change (ServiceNow field: justification). **Required**.
 * `additional_fields`: Additional fields to set on the change ticket (optional, format: "key, value|key, value|key, value|key, value"). **Optional**.
+* `override_table`: Override the default CI lookup table (alphanumeric and underscores). **Optional**
 
 
 ### Outputs
