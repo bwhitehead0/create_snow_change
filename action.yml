@@ -81,6 +81,9 @@ inputs:
     description: "Timeout for ServiceNow API call (default: 60)"
     required: false
     default: "60"
+  override_table:
+    description: "Override default table for CI lookup (default: cmdb_ci_service_discovered, specify if CIs are in a different table)"
+    required: false
 outputs:
   change_ticket_number:
     description: The created change ticket number
@@ -124,6 +127,7 @@ runs:
         -j "${{ inputs.change_justification }}" \
         -y "${{ inputs.change_type }}" \
         -O "${{ inputs.change_assigned_to }}" \
+        -I "${{ inputs.override_table }}" \
         -D "${{ inputs.debug }}")
 
         change_ticket_sys_id=$(printf '%s' $response | jq -r '.result.sys_id')
