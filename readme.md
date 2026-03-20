@@ -13,7 +13,7 @@ on:
     - '*'
 
 jobs:
-  encode:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -114,7 +114,7 @@ jobs:
         run: |
           LOG_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/${{ steps.job_id.outputs.job_id }}"
 
-          WORKFLOW_STEP_MESSAGE="Dummy worknotes message. Using the old API action method. Starting deployment to ${{ env.ENV }} environment via GitHub Actions. See below and workflow logs for additional details.\r\n"
+          WORKFLOW_STEP_MESSAGE="Dummy worknotes message. Starting deployment to ${{ env.ENV }} environment via GitHub Actions. See below and workflow logs for additional details.\r\n"
 
           GITHUB_USER="GitHub User: $GITHUB_ACTOR\r\n"
           GITHUB_REPOSITORY="GitHub Repo: ${{ github.repository }}\r\n"
