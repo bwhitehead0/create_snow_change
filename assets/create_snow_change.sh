@@ -187,9 +187,11 @@ get_ci_sys_id() {
   local response=""
   local sys_id=""
   local ci_name=""
+  local override_table="" # to accommodate CIs in other tables
+  local default_CI_table="cmdb_ci_service_discovered"
 
   # parse arguments
-  while getopts ":c:l:u:p:t:o:" arg; do
+  while getopts ":c:l:u:p:t:o:I:" arg; do
     case "${arg}" in
       c) ci_name="${OPTARG}" ;;
       l) sn_url="$OPTARG" ;;
@@ -197,6 +199,7 @@ get_ci_sys_id() {
       p) password="$OPTARG" ;;
       t) token="$OPTARG" ;;
       o) timeout="$OPTARG" ;;
+      I) override_table="$OPTARG" ;;
       *)
         err "Invalid option: -$OPTARG"
         exit 1
@@ -214,6 +217,7 @@ get_ci_sys_id() {
     dbg " token: $token"
   fi
   dbg " timeout: $timeout"
+  dbg " override_table: $override_table"
   dbg " DEBUG: $DEBUG"
   dbg " DEBUG_PASS: $DEBUG_PASS"
 
@@ -240,7 +244,23 @@ get_ci_sys_id() {
 
   # build URL
   # break up here so we can add logic around pieces of the API call as needed in the future
-  API_ENDPOINT="/api/now/table/cmdb_ci_service_discovered"
+
+  if [[ -n "$override_table" ]]; then
+    # validate override_table
+    if [[ ! "$override_table" =~ ^[a-zA-Z0-9_]+$ ]]; then
+      err "get_ci_sys_id(): Invalid override_table name (${override_table}). Must be alphanumeric and underscores only."
+      exit 1
+    else
+      dbg "get_ci_sys_id(): override_table (${override_table}) is valid."
+    fi
+
+    API_ENDPOINT="/api/now/table/${override_table}"
+    dbg "get_ci_sys_id(): Using override CI lookup table: ${override_table}"
+  else
+    API_ENDPOINT="/api/now/table/${default_CI_table}"
+    dbg "get_ci_sys_id(): Using default CI lookup table: ${default_CI_table}"
+  fi
+
   API_PARAMETERS="sysparm_fields=name,sys_id&timeout=${timeout}&sysparm_query=name=""$encoded_ci_name"
   URL="${sn_url}${API_ENDPOINT}?${API_PARAMETERS}"
 
@@ -553,6 +573,7 @@ main() {
   local change_justification=""
   local change_type=""
   local assigned_to=""
+  local override_table=""
   # local token="" # need to remove in next update, replaced by BEARER_TOKEN for clarity
   local timeout="60" # default timeout value
   local oauth_endpoint="oauth_token.do"
@@ -564,7 +585,7 @@ main() {
   
   # TODO: remove DEBUG_PASS entirely?
 
-  while getopts ":c:l:d:s:a:u:p:C:S:o:O:D:P:T:r:G:A:N:n:R:b:t:j:y:" opt; do
+  while getopts ":c:l:d:s:a:u:p:C:S:o:O:D:P:T:r:G:A:N:n:R:b:t:j:y:I:" opt; do
     case "$opt" in
       a) additional_fields="$OPTARG" ;;
       A) change_start_date="$OPTARG" ;;
@@ -574,6 +595,7 @@ main() {
       d) description="$OPTARG" ;;
       D) DEBUG="$OPTARG" ;;
       G) change_group="$OPTARG" ;;
+      I) override_table="$OPTARG" ;;
       j) change_justification="$OPTARG" ;;
       l) sn_url="$OPTARG" ;;
       n) change_implementation_plan="$OPTARG" ;;
@@ -620,6 +642,7 @@ main() {
     dbg " change_backout_plan: $change_backout_plan"
     dbg " change_test_plan: $change_test_plan"
     dbg " change_justification: $change_justification"
+    dbg " override_table: $override_table"
     #dbg " change_business_impact: $change_business_impact"
     dbg " change_type: $change_type"
     dbg " additional_fields: $additional_fields"
@@ -710,7 +733,7 @@ main() {
   fi
   
 
-  ci_sys_id=$(get_ci_sys_id -c "$ci_name" -l "${sn_url}" -u "${username}" -p "${password}" -t "${BEARER_TOKEN}") # done
+  ci_sys_id=$(get_ci_sys_id -c "$ci_name" -I "$override_table" -l "${sn_url}" -u "${username}" -p "${password}" -t "${BEARER_TOKEN}") # done
 
   dbg "main(): marshalled_fields: ${marshalled_fields}"
   # json_payload=$(create_json_payload -c "${ci_sys_id}" -d "${description}" -s "${short_description}" -a "${marshalled_fields}") # done
@@ -723,7 +746,6 @@ main() {
     -A "${change_start_date}" \
     -N "${change_end_date}" \
     -n "${change_implementation_plan}" \
-    -r "${change_risk}" \
     -R "${change_risk_impact_analysis}" \
     -b "${change_backout_plan}" \
     -t "${change_test_plan}" \
